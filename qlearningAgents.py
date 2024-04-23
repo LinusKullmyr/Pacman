@@ -34,34 +34,18 @@ import warnings
 class DQAgent(ReinforcementAgent):
     """
     Q-Learning Agent
-
-    Functions you should fill in:
-      - computeValueFromQValues
-      - computeActionFromQValues
-      - getQValue
-      - getAction
-      - update
-
-    Instance variables you have access to
-      - self.epsilon (exploration prob)
-      - self.alpha (learning rate)
-      - self.discount (discount rate)
-
-    Functions you should use
-      - self.getLegalActions(state)
-        which returns legal actions for a state
     """
 
     def __init__(self, **args):
         ReinforcementAgent.__init__(self, **args)
 
-        self.index = 0  # This is always Pacman
+        self.index = 0  # Agent index 0 is Pacman
 
         self.learning_rate = 0.001  # learning_rate
         self.gamma = 0.95  # discount rate
+        self.epsilon_max = 0.8  # maximum random rate (initial)
         self.epsilon_min = 0.1  # minimum random rate
-        self.epsilon_max = 0.5  # maximum random rate (initial)
-        self.epsilon_scale = self.numTraining * 0.75
+        self.epsilon_min_episode = int(self.numTraining * 0.75)  # When epsilon should reach epsilon_min
         self.replay_buffer_size = 100
         self.batch_size = 32
 
@@ -126,7 +110,7 @@ class DQAgent(ReinforcementAgent):
 
         Returns
         -------
-        state_tensor : torch tensor of dim [4 + num_ghosts * 5, H, W]
+        state_tensor : torch tensor of dim [4 + num_ghosts * 5, W, H]
 
         """
         # Extracting the basic game state components
@@ -174,7 +158,7 @@ class DQAgent(ReinforcementAgent):
 
         # Ghost channels
         for i, (gpos, gdir) in enumerate(ghosts):
-            # Offset by 4 to account for walls, food, capsules, and Pac-Man channels
+            # Offset by 4 to account for walls, food, capsules, Pac-Man channels
             ghost_channel = 4 + i * 4 + direction_map[gdir]
 
             # print("ghosts", i, ghost_channel, int(gpos[1]), int(gpos[0]))
@@ -183,6 +167,20 @@ class DQAgent(ReinforcementAgent):
 
         # print(state_tensor)
         return state_tensor.unsqueeze(0)  # Unsqeeze to get a batch of 1
+
+    def getCurrentEpsilon(self):
+        ## TODO - this could probably be made nicer
+        if self.epsilon == 0:  # Epsilon is set to 0 after numTraining epsiodes
+            current_epsilon = 0
+        elif self.numTraining > 0:  # If we are doing training
+            current_epsilon = max(
+                self.epsilon_min,
+                self.epsilon_max - (self.epsilon_max - self.epsilon_min) / self.epsilon_min_episode * self.episodesSoFar,
+            )
+        else:
+            current_epsilon = 0
+
+        return current_epsilon
 
     def getAction(self, state):
         """
@@ -201,15 +199,11 @@ class DQAgent(ReinforcementAgent):
         if not legalActions:
             return None
 
+        # Get indices of legal actions
         legal_action_ints = [self.direction_to_index_map[x] for x in legalActions]
 
         ## Set current epsilon
-        if self.epsilon == 0:  # Epsilon is set to 0 after numTraining epsiodes
-            current_epsilon = 0
-        elif self.numTraining > 0:  # If we are doing training
-            current_epsilon = max(self.epsilon_min, self.epsilon_max * (1 - self.episodesSoFar / self.epsilon_scale))
-        else:
-            current_epsilon = 0
+        current_epsilon = self.getCurrentEpsilon()
 
         ## Determine action
         # Note! Currently only allows legal actions!
@@ -222,7 +216,8 @@ class DQAgent(ReinforcementAgent):
             with torch.no_grad():
                 q_values = self.double_Q.predict_eval(state_tensor).squeeze(0).detach()
 
-            # assert q_values.shape == (4,)
+            assert q_values.shape == (5,)
+
             illegal_actions_mask = torch.ones_like(q_values).bool()
             illegal_actions_mask[legal_action_ints] = False
             q_values[illegal_actions_mask] = float("-inf")
@@ -271,7 +266,7 @@ class DQAgent(ReinforcementAgent):
         else:
             done = True
 
-        # Make tensor of everything
+        # Make tensors of everything
         state_tensor = self.stateToTensor(state)
         action_tensor = torch.tensor([self.direction_to_index_map[action]], dtype=torch.long)
         nextState_tensor = self.stateToTensor(nextState)
@@ -287,12 +282,6 @@ class DQAgent(ReinforcementAgent):
             batch = random.sample(list(self.replay_buffer), self.batch_size)
 
             self.reinforce(batch)
-
-    # def getPolicy(self, state):
-    #     return self.computeActionFromQValues(state)
-
-    # def getValue(self, state):
-    #     return self.computeValueFromQValues(state)
 
     def final(self, state):
         """
@@ -311,18 +300,20 @@ class DQAgent(ReinforcementAgent):
 
         NUM_EPS_UPDATE = 100
         if self.episodesSoFar % NUM_EPS_UPDATE == 0:
-            print("Reinforcement Learning Status:")
+            # print(f"Episode: {self.episodesSoFar}")
             windowAvg = self.lastWindowAccumRewards / float(NUM_EPS_UPDATE)
             if self.episodesSoFar <= self.numTraining:
                 trainAvg = self.accumTrainRewards / float(self.episodesSoFar)
-                print("\tCompleted %d out of %d training episodes" % (self.episodesSoFar, self.numTraining))
-                print("\tAverage Rewards over all training: %.2f" % (trainAvg))
+                print("Completed %d out of %d training episodes" % (self.episodesSoFar, self.numTraining))
+                print("Average Rewards over all training: %.2f" % (trainAvg))
             else:
                 testAvg = float(self.accumTestRewards) / (self.episodesSoFar - self.numTraining)
-                print("\tCompleted %d test episodes" % (self.episodesSoFar - self.numTraining))
-                print("\tAverage Rewards over testing: %.2f" % testAvg)
-            print("\tAverage Rewards for last %d episodes: %.2f" % (NUM_EPS_UPDATE, windowAvg))
-            print("\tEpisode took %.2f seconds" % (time.time() - self.episodeStartTime))
+                print("Completed %d test episodes" % (self.episodesSoFar - self.numTraining))
+                print("Average Rewards over testing: %.2f" % testAvg)
+            print("Average Rewards for last %d episodes: %.2f" % (NUM_EPS_UPDATE, windowAvg))
+            print("Episodes took %.2f seconds" % (time.time() - self.episodeStartTime))
+            print(f"Current epsilon = {self.getCurrentEpsilon()}")
+            print("")
             self.lastWindowAccumRewards = 0.0
             self.episodeStartTime = time.time()
 
@@ -330,40 +321,6 @@ class DQAgent(ReinforcementAgent):
             msg = "Training Done (turning off epsilon and alpha)"
             print("%s\n%s" % (msg, "-" * len(msg)))
 
-        ## above is from parent class!
-
         if len(self.replay_buffer) == self.replay_buffer_size and self.episodesSoFar % self.sync_target_episode_count == 0:
             print(f"Episode {self.episodesSoFar}: Synchronizing policy and target networks")
             self.syncNetworks()
-
-
-# class PacmanQAgent(QLearningAgent):
-#     "Exactly the same as QLearningAgent, but with different default parameters"
-
-#     def __init__(self, epsilon=0.001, gamma=0.9, alpha=0.1, numTraining=10, **args):
-#         """
-#         These default parameters can be changed from the pacman.py command line.
-#         For example, to change the exploration rate, try:
-#             python pacman.py -p PacmanQLearningAgent -a epsilon=0.1
-
-#         alpha    - learning rate
-#         epsilon  - exploration rate
-#         gamma    - discount factor
-#         numTraining - number of training episodes, i.e. no learning after these many episodes
-#         """
-#         args["epsilon"] = epsilon
-#         args["gamma"] = gamma
-#         args["alpha"] = alpha
-#         args["numTraining"] = numTraining
-#         self.index = 0  # This is always Pacman
-#         QLearningAgent.__init__(self, **args)
-
-#     def getAction(self, state):
-#         """
-#         Simply calls the getAction method of QLearningAgent and then
-#         informs parent of action for Pacman.  Do not change or remove this
-#         method.
-#         """
-#         action = QLearningAgent.getAction(self, state)
-#         self.doAction(state, action)
-#         return action
