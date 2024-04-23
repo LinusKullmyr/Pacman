@@ -20,7 +20,7 @@
 # John DeNero (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
 # For more info, see http://inst.eecs.berkeley.edu/~cs188/sp09/pacman.html
 
-from util import *
+import util
 import time
 import os
 import traceback
@@ -47,7 +47,7 @@ class Agent:
         The Agent will receive a GameState (from either {pacman, capture, sonar}.py) and
         must return an action from Directions.{North, South, East, West, Stop}
         """
-        raiseNotDefined()
+        util.raiseNotDefined()
 
 
 class Directions:
@@ -477,7 +477,7 @@ class GameStateData:
                 continue
             if agentState.configuration == None:
                 continue
-            x, y = [int(i) for i in nearestPoint(agentState.configuration.pos)]
+            x, y = [int(i) for i in util.nearestPoint(agentState.configuration.pos)]
             agent_dir = agentState.configuration.direction
             if agentState.isPacman:
                 map[x][y] = self._pacStr(agent_dir)
@@ -627,13 +627,13 @@ class Game:
                 self.mute(i)
                 if self.catchExceptions:
                     try:
-                        timed_func = TimeoutFunction(agent.registerInitialState, int(self.rules.getMaxStartupTime(i)))
+                        timed_func = util.TimeoutFunction(agent.registerInitialState, int(self.rules.getMaxStartupTime(i)))
                         try:
                             start_time = time.time()
                             timed_func(self.state.deepCopy())
                             time_taken = time.time() - start_time
                             self.totalAgentTimes[i] += time_taken
-                        except TimeoutFunctionException:
+                        except util.TimeoutFunctionException:
                             print("Agent %d ran out of time on startup!" % i, file=sys.stderr)
                             self.unmute()
                             self.agentTimeout = True
@@ -662,11 +662,11 @@ class Game:
                 self.mute(agentIndex)
                 if self.catchExceptions:
                     try:
-                        timed_func = TimeoutFunction(agent.observationFunction, int(self.rules.getMoveTimeout(agentIndex)))
+                        timed_func = util.TimeoutFunction(agent.observationFunction, int(self.rules.getMoveTimeout(agentIndex)))
                         try:
                             start_time = time.time()
                             observation = timed_func(self.state.deepCopy())
-                        except TimeoutFunctionException:
+                        except util.TimeoutFunctionException:
                             skip_action = True
                         move_time += time.time() - start_time
                         self.unmute()
@@ -685,13 +685,15 @@ class Game:
             self.mute(agentIndex)
             if self.catchExceptions:
                 try:
-                    timed_func = TimeoutFunction(agent.getAction, int(self.rules.getMoveTimeout(agentIndex)) - int(move_time))
+                    timed_func = util.TimeoutFunction(
+                        agent.getAction, int(self.rules.getMoveTimeout(agentIndex)) - int(move_time)
+                    )
                     try:
                         start_time = time.time()
                         if skip_action:
-                            raise TimeoutFunctionException()
+                            raise util.TimeoutFunctionException()
                         action = timed_func(observation)
-                    except TimeoutFunctionException:
+                    except util.TimeoutFunctionException:
                         print("Agent %d timed out on a single move!" % agentIndex, file=sys.stderr)
                         self.agentTimeout = True
                         self._agentCrash(agentIndex, quiet=True)
