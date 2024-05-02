@@ -46,9 +46,19 @@ class DQAgent(ReinforcementAgent):
         self.epsilon_max = 1.0  # maximum random rate (initial)
         self.epsilon_min = 0.1  # minimum random rate
         self.epsilon_min_episode = int(self.numTraining * 0.75)  # When epsilon should reach epsilon_min
+
+        ## TODO - implement these
+        # Switch to allow Pacman to take "stop" action or not
+        self.allow_stopping = True
+        # Log which actions were taken and plot
+        if self.allow_stopping:
+            self.log_actions = [0] * 5
+        else:
+            self.log_actions = [0] * 4
+        ##
+
         self.replay_buffer_size = 200
         self.batch_size = 32
-
         self.sync_target_episode_count = 100
 
         self.state_target_dimesions = (32, 32)  # All maps are padded to this size
@@ -242,6 +252,7 @@ class DQAgent(ReinforcementAgent):
 
             action_idx = torch.argmax(q_values)
 
+        self.log_actions[action_idx] += 1
         action = self.action_tuples[action_idx]
 
         self.doAction(state, action)
