@@ -42,15 +42,16 @@ class DQAgent(ReinforcementAgent):
         self.index = 0  # Agent index 0 is Pacman
 
         self.learning_rate = 0.001  # learning_rate
-        self.gamma = 0.95  # discount rate
-        self.epsilon_max = 0.8  # maximum random rate (initial)
+        self.gamma = 0.99  # discount rate
+        self.epsilon_max = 1.0  # maximum random rate (initial)
         self.epsilon_min = 0.1  # minimum random rate
         self.epsilon_min_episode = int(self.numTraining * 0.75)  # When epsilon should reach epsilon_min
-        self.replay_buffer_size = 100
+        self.replay_buffer_size = 200
         self.batch_size = 32
 
         self.sync_target_episode_count = 100
 
+        self.state_target_dimesions = (32, 32)  # All maps are padded to this size
         self.double_Q = None  # defer the creation of Q-nets until we have a state, in registerInitialState
         self.replay_buffer = collections.deque(maxlen=self.replay_buffer_size)
 
@@ -165,7 +166,24 @@ class DQAgent(ReinforcementAgent):
             x, y = gpos
             state_tensor[ghost_channel, int(x), int(y)] = 1
 
-        # print(state_tensor)
+        # Calculate padding
+        # print(state_tensor.size())
+        _, h, w = state_tensor.size()
+
+        # Calculate padding to achieve target dimensions
+        # Ensure the total padding size is evenly divisible by 2
+        pad_height = max(32 - h, 0)
+        pad_width = max(32 - w, 0)
+
+        # Calculate padding for each side to maintain symmetry
+        pad_top = pad_height // 2
+        pad_bottom = pad_height - pad_top
+        pad_left = pad_width // 2
+        pad_right = pad_width - pad_left
+
+        # Apply symmetric padding
+        state_tensor = torch.nn.functional.pad(state_tensor, (pad_left, pad_right, pad_top, pad_bottom), mode="constant", value=0)
+
         return state_tensor.unsqueeze(0)  # Unsqeeze to get a batch of 1
 
     def getCurrentEpsilon(self):
@@ -312,7 +330,18 @@ class DQAgent(ReinforcementAgent):
                 print("Average Rewards over testing: %.2f" % testAvg)
             print("Average Rewards for last %d episodes: %.2f" % (NUM_EPS_UPDATE, windowAvg))
             print("Episodes took %.2f seconds" % (time.time() - self.episodeStartTime))
-            print(f"Current epsilon = {self.getCurrentEpsilon()}")
+            predict = "predict_eval"
+            train = "training_step"
+            calls_pred = self.double_Q.get_times(predict)[0]
+            calls_train = self.double_Q.get_times(train)[0]
+            time_pred = self.double_Q.get_times(predict)[1]
+            time_train = self.double_Q.get_times(train)[1]
+            self.double_Q.reset_times()
+            print(f"Total number of predictions: {calls_pred}")
+            print(f"Total time for {predict}: {time_pred:.2f} seconds")
+            print(f"Total number of trainings: {calls_train}")
+            print(f"Total time for {train}: {time_train:.2f} seconds")
+            print(f"Current epsilon = {self.getCurrentEpsilon():.3f}")
             print("")
             self.lastWindowAccumRewards = 0.0
             self.episodeStartTime = time.time()
@@ -322,5 +351,5 @@ class DQAgent(ReinforcementAgent):
             print("%s\n%s" % (msg, "-" * len(msg)))
 
         if len(self.replay_buffer) == self.replay_buffer_size and self.episodesSoFar % self.sync_target_episode_count == 0:
-            print(f"Episode {self.episodesSoFar}: Synchronizing policy and target networks")
+            print(f"Episode {self.episodesSoFar}: Synchronizing policy and target networks\n")
             self.syncNetworks()

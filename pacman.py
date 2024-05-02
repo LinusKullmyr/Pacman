@@ -121,7 +121,7 @@ class GameState:
 
         # Time passes
         if agentIndex == 0:
-            state.data.scoreChange += -TIME_PENALTY  # Penalty for waiting around
+            state.data.scoreChange -= TIME_PENALTY  # Penalty for waiting around
         else:
             GhostRules.decrementTimer(state.data.agentStates[agentIndex])
 
@@ -741,7 +741,7 @@ def replayGame(layout, actions, display):
 
 
 def runGames(layout, pacman, ghosts, display, numGames, record, numTraining=0, catchExceptions=False, timeout=30):
-    print("layout", layout)
+    print("layout:\n", layout)
     print("numGames", numGames)
     print("numTraining", numTraining)
     import __main__
