@@ -1,10 +1,10 @@
-# learningAgents.py
-# -----------------
+# qlearningAgents.py
+# ------------------
 # Licensing Information:  You are free to use or extend these projects for
 # educational purposes provided that (1) you do not distribute or publish
 # solutions, (2) you retain this notice, and (3) you provide clear
 # attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
+#
 # Attribution Information: The Pacman AI projects were developed at UC Berkeley.
 # The core projects and autograders were primarily created by John DeNero
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
@@ -12,247 +12,372 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
-from game import Directions, Agent, Actions
+from learningAgents import ReinforcementAgent
 
-import random,util,time
+# from featureExtractors import *
+import game
+import qnets
+import random
+import torch.nn as nn
+# import util
 
-class ValueEstimationAgent(Agent):
+# import math
+import torch
+import collections
+import time
+
+# import pytorch_lightning as pl
+# import logging
+import warnings
+
+
+class DQAgent(ReinforcementAgent):
     """
-      Abstract agent which assigns values to (state,action)
-      Q-Values for an environment. As well as a value to a
-      state and a policy given respectively by,
-
-      V(s) = max_{a in actions} Q(s,a)
-      policy(s) = arg_max_{a in actions} Q(s,a)
-
-      Both ValueIterationAgent and QLearningAgent inherit
-      from this agent. While a ValueIterationAgent has
-      a model of the environment via a MarkovDecisionProcess
-      (see mdp.py) that is used to estimate Q-Values before
-      ever actually acting, the QLearningAgent estimates
-      Q-Values while acting in the environment.
+    Q-Learning Agent
     """
 
-    def __init__(self, alpha=1.0, epsilon=0.05, gamma=0.8, numTraining = 10):
-        """
-        Sets options, which can be passed in via the Pacman command line using -a alpha=0.5,...
-        alpha    - learning rate
-        epsilon  - exploration rate
-        gamma    - discount factor
-        numTraining - number of training episodes, i.e. no learning after these many episodes
-        """
-        self.alpha = float(alpha)
-        self.epsilon = float(epsilon)
-        self.discount = float(gamma)
-        self.numTraining = int(numTraining)
+    def __init__(self, max_steps_per_episode=1000, **args):
 
-    ####################################
-    #    Override These Functions      #
-    ####################################
-    def getQValue(self, state, action):
-        """
-        Should return Q(state,action)
-        """
-        util.raiseNotDefined()
+        ReinforcementAgent.__init__(self, **args)
+        self.max_steps_per_episode = max_steps_per_episode
+        self.steps_per_episode = 0
 
-    def getValue(self, state):
-        """
-        What is the value of this state under the best action?
-        Concretely, this is given by
+        self.index = 0  # Agent index 0 is Pacman
 
-        V(s) = max_{a in actions} Q(s,a)
-        """
-        util.raiseNotDefined()
+        self.learning_rate = 0.001  # learning_rate
+        self.gamma = 0.99  # discount rate
+        self.epsilon_max = 1.0  # maximum random rate (initial)
+        self.epsilon_min = 0.1  # minimum random rate
+        self.epsilon_min_episode = int(self.numTraining * 0.75)  # When epsilon should reach epsilon_min
 
-    def getPolicy(self, state):
-        """
-        What is the best action to take in the state. Note that because
-        we might want to explore, this might not coincide with getAction
-        Concretely, this is given by
+        ## TODO - implement these
+        # Switch to allow Pacman to take "stop" action or not
+        self.allow_stopping = True
+        # Log which actions were taken and plot
+        if self.allow_stopping:
+            self.log_actions = [0] * 5
+        else:
+            self.log_actions = [0] * 4
+        ##
 
-        policy(s) = arg_max_{a in actions} Q(s,a)
+        self.replay_buffer_size = 200
+        self.batch_size = 32
+        self.sync_target_episode_count = 100
 
-        If many actions achieve the maximal Q-value,
-        it doesn't matter which is selected.
+        self.state_target_dimesions = (32, 32)  # All maps are padded to this size
+        self.double_Q = None  # defer the creation of Q-nets until we have a state, in registerInitialState
+        self.replay_buffer = collections.deque(maxlen=self.replay_buffer_size)
+
+        self.action_tuples = (
+            game.Directions.NORTH,
+            game.Directions.EAST,
+            game.Directions.SOUTH,
+            game.Directions.WEST,
+            game.Directions.STOP,
+        )
+
+        self.direction_to_index_map = {
+            "North": 0,
+            "East": 1,
+            "South": 2,
+            "West": 3,
+            "Stop": 4,
+        }
+        self.index_to_direction_map = {0: "North", 1: "East", 2: "South", 3: "West", 4: "Stop"}
+
+        # Ignore specific UserWarnings from PyTorch about Lazy modules
+        warnings.filterwarnings("ignore", message="Lazy modules are a new feature")
+
+        # From parent class init
+        # self.episodesSoFar = 0
+        # self.accumTrainRewards = 0.0
+        # self.accumTestRewards = 0.0
+        # self.numTraining = int(numTraining)
+        # self.epsilon = float(epsilon)
+        # self.alpha = float(alpha)
+        # self.discount = float(gamma)
+
+    def syncNetworks(self):
+        self.double_Q.update_target_network()
+
+    def registerInitialState(self, state):
+        # This will be called at the beginning of each episode
+        self.startEpisode()
+        if self.episodesSoFar == 0:
+            print("Beginning %d episodes of Training" % (self.numTraining))
+
+        # Create Q-nets (once)
+        if self.double_Q is None:
+            print("Creating Q-nets")
+            num_ghosts = len(state.getGhostStates())
+            input_channels = 4 + num_ghosts * 5
+            output_size = 5
+            self.double_Q = qnets.double_DQN(input_channels, output_size, self.learning_rate, self.gamma)
+
+    def stateToTensor(self, state):
         """
-        util.raiseNotDefined()
+        Take a gamestate and makes a tensor
+
+        Parameters
+        ----------
+        state : GameState objects (from pacman.py)
+
+        Returns
+        -------
+        state_tensor : torch tensor of dim [4 + num_ghosts * 5, W, H]
+
+        """
+        # Extracting the basic game state components
+        walls = state.getWalls()  # class Grid, can be indexed [x][y]
+        food = state.getFood()  # Same type as walls
+
+        # Pac-Man state
+        pacman_state = state.getPacmanState()
+        ppos, _ = pacman_state.getPosition(), pacman_state.getDirection()
+
+        # Ghost states
+        ghosts = []
+        for gs in state.getGhostStates():
+            gpos = gs.getPosition()
+            gdir = gs.getDirection()
+            ghosts.append((gpos, gdir))
+        num_ghosts = len(ghosts)
+
+        # Capsules
+        capsules = state.getCapsules()  # List of (x, y) tuples
+
+        # Environment dimensions
+        width, height = walls.width, walls.height
+
+        # Initialize tensors for each channel
+        num_channels = 4 + num_ghosts * 5  # walls, food, capsules, Pac-Man, 5 per ghost
+        state_tensor = torch.zeros((num_channels, width, height), dtype=torch.float32)
+
+        # Map for direction to tensor indices
+        direction_map = self.direction_to_index_map
+
+        # Fill the tensor
+        for x in range(width):
+            for y in range(height):
+                state_tensor[0, x, y] = walls[x][y]  # Wall channel
+                state_tensor[1, x, y] = food[x][y]  # Food channel
+
+        # Capsule channel (as sparse locations)
+        for x, y in capsules:
+            state_tensor[2, x, y] = 1
+
+        # Pac-Man channel
+        x, y = ppos
+        state_tensor[3, x, y] = 1
+
+        # Ghost channels
+        for i, (gpos, gdir) in enumerate(ghosts):
+            # Offset by 4 to account for walls, food, capsules, Pac-Man channels
+            ghost_channel = 4 + i * 4 + direction_map[gdir]
+
+            # print("ghosts", i, ghost_channel, int(gpos[1]), int(gpos[0]))
+            x, y = gpos
+            state_tensor[ghost_channel, int(x), int(y)] = 1
+
+        # Calculate padding
+        # print(state_tensor.size())
+        _, h, w = state_tensor.size()
+
+        # Calculate padding to achieve target dimensions
+        # Ensure the total padding size is evenly divisible by 2
+        pad_height = max(32 - h, 0)
+        pad_width = max(32 - w, 0)
+
+        # Calculate padding for each side to maintain symmetry
+        pad_top = pad_height // 2
+        pad_bottom = pad_height - pad_top
+        pad_left = pad_width // 2
+        pad_right = pad_width - pad_left
+
+        # Apply symmetric padding
+        state_tensor = torch.nn.functional.pad(state_tensor, (pad_left, pad_right, pad_top, pad_bottom), mode="constant", value=0)
+
+        return state_tensor.unsqueeze(0)  # Unsqeeze to get a batch of 1
+
+    def getCurrentEpsilon(self):
+        ## TODO - this could probably be made nicer
+        if self.epsilon == 0:  # Epsilon is set to 0 after numTraining epsiodes
+            current_epsilon = 0
+        elif self.numTraining > 0:  # If we are doing training
+            current_epsilon = max(
+                self.epsilon_min,
+                self.epsilon_max - (self.epsilon_max - self.epsilon_min) / self.epsilon_min_episode * self.episodesSoFar,
+            )
+        else:
+            current_epsilon = 0
+
+        return current_epsilon
 
     def getAction(self, state):
         """
-        state: can call state.getLegalActions()
-        Choose an action and return it.
+        Compute the action to take in the current state.  With
+        probability self.epsilon, we should take a random action and
+        take the best policy action otherwise.  Note that if there are
+        no legal actions, which is the case at the terminal state, you
+        should choose None as the action.
+
+        The Agent will receive a GameState and
+        must return an action from Directions.{North, South, East, West, Stop}
         """
-        util.raiseNotDefined()
 
-class ReinforcementAgent(ValueEstimationAgent):
-    """
-      Abstract Reinforcemnt Agent: A ValueEstimationAgent
-            which estimates Q-Values (as well as policies) from experience
-            rather than a model
+        ## If no legal actions, return None
+        legalActions = self.getLegalActions(state)
+        if not legalActions:
+            return None
 
-        What you need to know:
-                    - The environment will call
-                      observeTransition(state,action,nextState,deltaReward),
-                      which will call update(state, action, nextState, deltaReward)
-                      which you should override.
-        - Use self.getLegalActions(state) to know which actions
-                      are available in a state
-    """
-    ####################################
-    #    Override These Functions      #
-    ####################################
+        # Get indices of legal actions
+        legal_action_ints = [self.direction_to_index_map[x] for x in legalActions]
+
+        ## Set current epsilon
+        current_epsilon = self.getCurrentEpsilon()
+
+        ## Determine action
+        # Note! Currently only allows legal actions!
+        if random.random() < current_epsilon:
+            # Random exploration with probability epsilon
+            action_idx = random.choice(legal_action_ints)
+        else:
+            # Get action from Q-network
+            state_tensor = self.stateToTensor(state)
+            with torch.no_grad():
+                q_values = self.double_Q.predict_eval(state_tensor).squeeze(0).detach()
+
+            assert q_values.shape == (5,)
+
+            illegal_actions_mask = torch.ones_like(q_values).bool()
+            illegal_actions_mask[legal_action_ints] = False
+            q_values[illegal_actions_mask] = float("-inf")
+
+            action_idx = torch.argmax(q_values)
+
+        self.log_actions[action_idx] += 1
+        action = self.action_tuples[action_idx]
+
+        self.doAction(state, action)
+
+        return action
+
+    def reinforce(self, batch):
+        states, actions, next_states, rewards, dones = zip(*batch)
+
+        # Create stack/cat tensor for the batch
+        states = torch.cat(states, dim=0)
+        actions = torch.stack(actions)
+        rewards = torch.stack(rewards)
+        next_states = torch.cat(next_states, dim=0)
+        dones = torch.stack(dones)
+
+        # print("state.shape", states.shape)
+        # print("actions.shape", actions.shape)
+        # print("rewards.shape", rewards.shape)
+        # print("next_states.shape", next_states.shape)
+        # print("dones.shape", dones.shape)
+
+        batch = (states, actions, next_states, rewards, dones)
+
+        self.double_Q.training_step(batch)
 
     def update(self, state, action, nextState, reward):
         """
-                This class will call this function, which you write, after
-                observing a transition and reward
-        """
-        util.raiseNotDefined()
+        The parent class calls this to observe a
+        state = action => nextState and reward transition.
+        You should do your Q-Value update here
 
-    ####################################
-    #    Read These Functions          #
-    ####################################
+        NOTE: You should never call this function,
+        it will be called on your behalf
+        """
 
-    def getLegalActions(self,state):
-        """
-          Get the actions available for a given
-          state. This is what you should use to
-          obtain legal actions for a state
-        """
-        return self.actionFn(state)
-
-    def observeTransition(self, state,action,nextState,deltaReward):
-        """
-            Called by environment to inform agent that a transition has
-            been observed. This will result in a call to self.update
-            on the same arguments
-
-            NOTE: Do *not* override or call this function
-        """
-        self.episodeRewards += deltaReward
-        self.update(state,action,nextState,deltaReward)
-
-    def startEpisode(self):
-        """
-          Called by environment when new episode is starting
-        """
-        self.lastState = None
-        self.lastAction = None
-        self.episodeRewards = 0.0
-
-    def stopEpisode(self):
-        """
-          Called by environment when episode is done
-        """
-        if self.episodesSoFar < self.numTraining:
-            self.accumTrainRewards += self.episodeRewards
+        # This should tell us if the game is over or not
+        if self.getLegalActions(nextState):
+            done = False
         else:
-            self.accumTestRewards += self.episodeRewards
-        self.episodesSoFar += 1
-        if self.episodesSoFar >= self.numTraining:
-            # Take off the training wheels
-            self.epsilon = 0.0    # no exploration
-            self.alpha = 0.0      # no learning
+            done = True
 
-    def isInTraining(self):
-        return self.episodesSoFar < self.numTraining
+        # Make tensors of everything
+        state_tensor = self.stateToTensor(state)
+        action_tensor = torch.tensor([self.direction_to_index_map[action]], dtype=torch.long)
+        nextState_tensor = self.stateToTensor(nextState)
+        reward_tensor = torch.tensor([reward], dtype=torch.float32)
+        done_tensor = torch.tensor([done], dtype=torch.bool)
 
-    def isInTesting(self):
-        return not self.isInTraining()
+        # Experience to replay buffer
+        experience = (state_tensor, action_tensor, nextState_tensor, reward_tensor, done_tensor)
+        self.replay_buffer.append(experience)
 
-    def __init__(self, actionFn = None, numTraining=100, epsilon=0.5, alpha=0.5, gamma=1):
-        """
-        actionFn: Function which takes a state and returns the list of legal actions
+        # Run reinforcement if replay buffer is full
+        if len(self.replay_buffer) >= self.replay_buffer_size:
+            batch = random.sample(list(self.replay_buffer), self.batch_size)
 
-        alpha    - learning rate
-        epsilon  - exploration rate
-        gamma    - discount factor
-        numTraining - number of training episodes, i.e. no learning after these many episodes
-        """
-        if actionFn == None:
-            actionFn = lambda state: state.getLegalActions()
-        self.actionFn = actionFn
-        self.episodesSoFar = 0
-        self.accumTrainRewards = 0.0
-        self.accumTestRewards = 0.0
-        self.numTraining = int(numTraining)
-        self.epsilon = float(epsilon)
-        self.alpha = float(alpha)
-        self.discount = float(gamma)
-
-    ################################
-    # Controls needed for Crawler  #
-    ################################
-    def setEpsilon(self, epsilon):
-        self.epsilon = epsilon
-
-    def setLearningRate(self, alpha):
-        self.alpha = alpha
-
-    def setDiscount(self, discount):
-        self.discount = discount
-
-    def doAction(self,state,action):
-        """
-            Called by inherited class when
-            an action is taken in a state
-        """
-        self.lastState = state
-        self.lastAction = action
-
-    ###################
-    # Pacman Specific #
-    ###################
-    def observationFunction(self, state):
-        """
-            This is where we ended up after our last action.
-            The simulation should somehow ensure this is called
-        """
-        if not self.lastState is None:
-            reward = state.getScore() - self.lastState.getScore()
-            self.observeTransition(self.lastState, self.lastAction, state, reward)
-        return state
-
-    def registerInitialState(self, state):
-        self.startEpisode()
-        if self.episodesSoFar == 0:
-            print('Beginning %d episodes of Training' % (self.numTraining))
+            self.reinforce(batch)
 
     def final(self, state):
         """
-          Called by Pacman game at the terminal state
+        Called by Pacman game at the terminal state
         """
         deltaReward = state.getScore() - self.lastState.getScore()
         self.observeTransition(self.lastState, self.lastAction, state, deltaReward)
         self.stopEpisode()
 
+        # Calculate steps per game
+        self.steps_per_episode += 1
+
         # Make sure we have this var
-        if not 'episodeStartTime' in self.__dict__:
+        if not "episodeStartTime" in self.__dict__:
             self.episodeStartTime = time.time()
-        if not 'lastWindowAccumRewards' in self.__dict__:
+        if not "lastWindowAccumRewards" in self.__dict__:
             self.lastWindowAccumRewards = 0.0
         self.lastWindowAccumRewards += state.getScore()
 
-        NUM_EPS_UPDATE = 100
+        NUM_EPS_UPDATE = 1000
         if self.episodesSoFar % NUM_EPS_UPDATE == 0:
-            print('Reinforcement Learning Status:')
+            # Calculate average steps per game
+            avg_steps_per_game = self.steps_per_episode / NUM_EPS_UPDATE
+
+            # Reset steps counter
+            self.steps_per_episode = 0
+
+            # Print average steps per game along with other statistics
+            print("Average Steps per Game: %.2f" % avg_steps_per_game)
             windowAvg = self.lastWindowAccumRewards / float(NUM_EPS_UPDATE)
             if self.episodesSoFar <= self.numTraining:
                 trainAvg = self.accumTrainRewards / float(self.episodesSoFar)
-                print('\tCompleted %d out of %d training episodes' % (
-                       self.episodesSoFar,self.numTraining))
-                print('\tAverage Rewards over all training: %.2f' % (
-                        trainAvg))
+                print("Completed %d out of %d training episodes" % (self.episodesSoFar, self.numTraining))
+                print("Average Rewards over all training: %.2f" % (trainAvg))
             else:
                 testAvg = float(self.accumTestRewards) / (self.episodesSoFar - self.numTraining)
-                print('\tCompleted %d test episodes' % (self.episodesSoFar - self.numTraining))
-                print('\tAverage Rewards over testing: %.2f' % testAvg)
-            print('\tAverage Rewards for last %d episodes: %.2f'  % (
-                    NUM_EPS_UPDATE,windowAvg))
-            print('\tEpisode took %.2f seconds' % (time.time() - self.episodeStartTime))
+                print("Completed %d test episodes" % (self.episodesSoFar - self.numTraining))
+                print("Average Rewards over testing: %.2f" % testAvg)
+            print("Average Rewards for last %d episodes: %.2f" % (NUM_EPS_UPDATE, windowAvg))
+            print("Episodes took %.2f seconds" % (time.time() - self.episodeStartTime))
+            predict = "predict_eval"
+            train = "training_step"
+            calls_pred = self.double_Q.get_times(predict)[0]
+            calls_train = self.double_Q.get_times(train)[0]
+            time_pred = self.double_Q.get_times(predict)[1]
+            time_train = self.double_Q.get_times(train)[1]
+            self.double_Q.reset_times()
+            print(f"Total number of predictions: {calls_pred}")
+            print(f"Total time for {predict}: {time_pred:.2f} seconds")
+            print(f"Total number of trainings: {calls_train}")
+            print(f"Total time for {train}: {time_train:.2f} seconds")
+            print(f"Current epsilon = {self.getCurrentEpsilon():.3f}")
+            print("")
             self.lastWindowAccumRewards = 0.0
             self.episodeStartTime = time.time()
 
         if self.episodesSoFar == self.numTraining:
-            msg = 'Training Done (turning off epsilon and alpha)'
-            print('%s\n%s' % (msg,'-' * len(msg)))
+            msg = "Training Done (turning off epsilon and alpha)"
+            print("%s\n%s" % (msg, "-" * len(msg)))
+
+        if len(self.replay_buffer) == self.replay_buffer_size and self.episodesSoFar % self.sync_target_episode_count == 0:
+            print(f"Episode {self.episodesSoFar}: Synchronizing policy and target networks\n")
+
+        # Stop episode if it exceeds the maximum number of steps
+        if self.steps_per_episode >= self.max_steps_per_episode:
+            print(f"Episode {self.episodesSoFar} terminated early due to exceeding maximum steps.")
+            self.stopEpisode()
