@@ -20,6 +20,9 @@ import qnets
 import random
 
 # import util
+import numpy as np
+import datetime as datetime
+import os
 
 # import math
 import torch
@@ -94,6 +97,17 @@ class DQAgent(ReinforcementAgent):
         # self.epsilon = float(epsilon)
         # self.alpha = float(alpha)
         # self.discount = float(gamma)
+
+        # Feature for the logger
+        self.Reward_Tracker = []
+        self.GameLength = 0
+        self.GameLength_Tracker = []
+
+        # Best model
+        self.best_reward = float("-inf")
+        self.best_model = None
+        
+
 
     def syncNetworks(self):
         self.double_Q.update_target_network()
@@ -297,6 +311,7 @@ class DQAgent(ReinforcementAgent):
         batch = (states, actions, next_states, rewards, dones)
 
         self.double_Q.training_step(batch)
+        self.GameLength += 1
 
     def update(self, state, action, nextState, reward):
         """
@@ -338,6 +353,12 @@ class DQAgent(ReinforcementAgent):
         deltaReward = state.getScore() - self.lastState.getScore()
         self.observeTransition(self.lastState, self.lastAction, state, deltaReward)
         self.stopEpisode()
+
+        if state.getScore() > self.best_reward:
+            self.best_reward = state.getScore()
+            self.best_model = self.double_Q.policy_network.state_dict()
+
+
 
         # Make sure we have this var
         if not "episodeStartTime" in self.__dict__:
@@ -382,6 +403,29 @@ class DQAgent(ReinforcementAgent):
             self.lastWindowAccumRewards = 0.0
             self.episodeStartTime = time.time()
 
+        LOGGING = 1
+        if(LOGGING):
+            # add to the Logger, each episode
+            self.Reward_Tracker.append(state.getScore())
+            self.GameLength_Tracker.append(self.GameLength)
+
+            if self.episodesSoFar == self.numTraining:
+                self.Reward_Tracker = np.array(self.Reward_Tracker)
+                self.GameLength_Tracker = np.array(self.GameLength_Tracker)
+                folderPath = "logs/"
+                suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+                # create a folder with the current time stamp
+                folderPath += suffix
+                os.makedirs(folderPath)
+
+                # save the numpy arrays
+                np.save(folderPath + "/reward_tracker" , self.Reward_Tracker)
+                np.save(folderPath + "/game_length_tracker", self.GameLength_Tracker)
+
+                # save the best pytorch model
+                torch.save(self.best_model, folderPath + "/best_model.pt")
+
+
         if self.episodesSoFar == self.numTraining:
             msg = "Training Done (turning off epsilon and alpha)"
             print("%s\n%s" % (msg, "-" * len(msg)))
@@ -389,3 +433,5 @@ class DQAgent(ReinforcementAgent):
         if len(self.replay_buffer) == self.replay_buffer_size and self.episodesSoFar % self.sync_target_episode_count == 0:
             print(f"Episode {self.episodesSoFar}: Synchronizing policy and target networks\n")
             self.syncNetworks()
+
+        self.GameLength = 0
