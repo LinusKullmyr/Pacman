@@ -143,7 +143,8 @@ class DQAgent(ReinforcementAgent):
         for gs in state.getGhostStates():
             gpos = gs.getPosition()
             gdir = gs.getDirection()
-            ghosts.append((gpos, gdir))
+            scared_timer = gs.scaredTimer
+            ghosts.append((gpos, gdir, scared_timer))
         num_ghosts = len(ghosts)
 
         # Capsules
@@ -174,13 +175,19 @@ class DQAgent(ReinforcementAgent):
         state_tensor[3, x, y] = 1
 
         # Ghost channels
-        for i, (gpos, gdir) in enumerate(ghosts):
+        for i, (gpos, gdir, timer) in enumerate(ghosts):
             # Offset by 4 to account for walls, food, capsules, Pac-Man channels
             ghost_channel = 4 + i * 4 + direction_map[gdir]
 
             # print("ghosts", i, ghost_channel, int(gpos[1]), int(gpos[0]))
             x, y = gpos
-            state_tensor[ghost_channel, int(x), int(y)] = 1
+
+            if timer > 0:
+                v = -1
+            else:
+                v = 1
+
+            state_tensor[ghost_channel, int(x), int(y)] = v
 
         # Calculate padding
         # print(state_tensor.size())

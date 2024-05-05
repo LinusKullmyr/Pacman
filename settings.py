@@ -29,9 +29,10 @@ class Settings:
         # Game and reward settings
         self.SCARED_TIME = 40  # Moves ghosts are scared, default = 40
         self.TIME_PENALTY = 1  # Number of points lost each round, default = 1
+        self.FOOD_REWARD = 10
         self.LOSE_PENALTY = 100  # default = 500
         self.WIN_REWARD = 100  # default = 500
-        self.EAT_GHOST_REWARD = 50  # default = 200
+        self.EAT_GHOST_REWARD = 100  # default = 200
 
         # If agent lose this many points (from highest score), it dies
         self.DROP_FROM_HIGHWATER_DEATH = 50

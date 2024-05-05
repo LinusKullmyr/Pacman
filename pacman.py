@@ -390,7 +390,7 @@ class PacmanRules:
         x, y = position
         # Eat food
         if state.data.food[x][y]:
-            state.data.scoreChange += 10
+            state.data.scoreChange += settings.FOOD_REWARD
             state.data.food = state.data.food.copy()
             state.data.food[x][y] = False
             state.data._foodEaten = position
