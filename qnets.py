@@ -116,35 +116,40 @@ class CNN(nn.Module):
     def __init__(self, input_channels, output_size):
         super().__init__()
 
-        self.model = nn.Sequential(
-            nn.Conv2d(input_channels, 16, kernel_size=3, padding=1),
-            nn.BatchNorm2d(16),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-            #
-            nn.Conv2d(16, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-            #
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-            #
-            nn.Flatten(),
-            #
-            nn.LazyLinear(128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5),
-            #
-            nn.Linear(128, 64),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5),
-            #
-            nn.Linear(64, output_size),
-        )
+        import settings
+
+        settings = settings.Settings()
+
+        conv_layers = settings.conv_layers
+        dense_layers = settings.dense_layers
+        dense_dropout = settings.dense_dropout
+
+        layers = []
+        current_channels = input_channels
+
+        # Add convolutional layers dynamically
+        for channels in conv_layers:
+            layers.append(nn.Conv2d(current_channels, channels, kernel_size=3, padding=1))
+            layers.append(nn.BatchNorm2d(channels))
+            layers.append(nn.ReLU(inplace=True))
+            layers.append(nn.MaxPool2d(2))
+            current_channels = channels
+
+        # Flatten the output for the dense layers
+        layers.append(nn.Flatten())
+
+        # Add dense layers dynamically
+        for neurons in dense_layers:
+            layers.append(nn.LazyLinear(neurons))
+            layers.append(nn.BatchNorm1d(neurons))
+            layers.append(nn.ReLU(inplace=True))
+            layers.append(nn.Dropout(dense_dropout))
+
+        # Final output layer
+        layers.append(nn.Linear(dense_layers[-1], output_size))
+
+        # Wrap all components into a Sequential module
+        self.model = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.model(x)

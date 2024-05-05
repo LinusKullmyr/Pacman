@@ -54,6 +54,10 @@ import random
 import os
 import pickle
 
+import settings
+
+settings = settings.Settings()
+
 ###################################################
 # YOUR INTERFACE TO THE PACMAN WORLD: A GameState #
 ###################################################
@@ -272,12 +276,12 @@ class GameState:
 ############################################################################
 
 
-SCARED_TIME = 40  # Moves ghosts are scared
 COLLISION_TOLERANCE = 0.7  # How close ghosts must be to Pacman to kill
-TIME_PENALTY = 1  # Number of points lost each round
-LOSE_PENALTY = 100  # default = 500
-WIN_REWARD = 100  # default = 500
-EAT_GHOST_REWARD = 50  # default = 200
+SCARED_TIME = settings.SCARED_TIME
+TIME_PENALTY = settings.TIME_PENALTY
+LOSE_PENALTY = settings.LOSE_PENALTY
+WIN_REWARD = settings.WIN_REWARD
+EAT_GHOST_REWARD = settings.EAT_GHOST_REWARD
 
 
 class ClassicGameRules:
@@ -460,6 +464,11 @@ class GhostRules:
                 ghostPosition = ghostState.configuration.getPosition()
                 if GhostRules.canKill(pacmanPosition, ghostPosition):
                     GhostRules.collide(state, ghostState, index)
+
+            ## TODO add death if score too far below highwater
+            if state.data.score < state.data.highwater_score - settings.DROP_FROM_HIGHWATER_DEATH:
+                state.data.scoreChange -= LOSE_PENALTY
+                state.data._lose = True
         else:
             ghostState = state.data.agentStates[agentIndex]
             ghostPosition = ghostState.configuration.getPosition()

@@ -38,31 +38,32 @@ class DQAgent(ReinforcementAgent):
 
     def __init__(self, **args):
         ReinforcementAgent.__init__(self, **args)
+        import settings
 
+        settings = settings.Settings()
         self.index = 0  # Agent index 0 is Pacman
 
-        self.learning_rate = 0.001  # learning_rate
-        self.gamma = 0.99  # discount rate
-        self.epsilon_max = 1.0  # maximum random rate (initial)
-        self.epsilon_min = 0.1  # minimum random rate
-        self.epsilon_min_episode = int(self.numTraining * 0.75)  # When epsilon should reach epsilon_min
+        self.learning_rate = settings.learning_rate
+        self.gamma = settings.gamma
+        self.epsilon_max = settings.epsilon_max
+        self.epsilon_min = settings.epsilon_min
+        self.epsilon_min_episode = int(self.numTraining * settings.epsilon_min_episode_ratio)
 
-        ## TODO - implement these
         # Switch to allow Pacman to take "stop" action or not
-        self.allow_stopping = True
-        # Log which actions were taken and plot
-        if self.allow_stopping:
-            self.log_actions = [0] * 5
-        else:
-            self.log_actions = [0] * 4
+        self.allow_stopping = settings.allow_stopping
+        # Log which actions were taken
+        self.log_actions = [0] * 5
         ##
 
-        self.replay_buffer_size = 200
-        self.batch_size = 32
-        self.sync_target_episode_count = 100
+        self.replay_buffer_size = settings.replay_buffer_size
+        self.batch_size = settings.batch_size
+        self.sync_target_episode_count = settings.sync_target_episode_count
 
-        self.state_target_dimesions = (32, 32)  # All maps are padded to this size
-        self.double_Q = None  # defer the creation of Q-nets until we have a state, in registerInitialState
+        # All maps are padded to this size
+        self.state_target_dimensions = settings.state_target_dimensions
+
+        # defer the creation of Q-nets until we have a state, in registerInitialState
+        self.double_Q = None
         self.replay_buffer = collections.deque(maxlen=self.replay_buffer_size)
 
         self.action_tuples = (
@@ -108,7 +109,12 @@ class DQAgent(ReinforcementAgent):
             print("Creating Q-nets")
             num_ghosts = len(state.getGhostStates())
             input_channels = 4 + num_ghosts * 5
-            output_size = 5
+
+            if self.allow_stopping:
+                output_size = 5
+            else:
+                output_size = 4
+
             self.double_Q = qnets.double_DQN(input_channels, output_size, self.learning_rate, self.gamma)
 
     def stateToTensor(self, state):
@@ -227,6 +233,9 @@ class DQAgent(ReinforcementAgent):
         if not legalActions:
             return None
 
+        if not self.allow_stopping:
+            legalActions.remove("Stop")
+
         # Get indices of legal actions
         legal_action_ints = [self.direction_to_index_map[x] for x in legalActions]
 
@@ -244,7 +253,10 @@ class DQAgent(ReinforcementAgent):
             with torch.no_grad():
                 q_values = self.double_Q.predict_eval(state_tensor).squeeze(0).detach()
 
-            assert q_values.shape == (5,)
+            if self.allow_stopping:
+                assert q_values.shape == (5,)
+            else:
+                assert q_values.shape == (4,)
 
             illegal_actions_mask = torch.ones_like(q_values).bool()
             illegal_actions_mask[legal_action_ints] = False
@@ -343,6 +355,11 @@ class DQAgent(ReinforcementAgent):
             print("Episodes took %.2f seconds" % (time.time() - self.episodeStartTime))
             predict = "predict_eval"
             train = "training_step"
+            print("Action count [North, East, South, West, Stop]:")
+            print(self.log_actions)
+            # reset action log
+            self.log_actions = [0] * 5
+
             calls_pred = self.double_Q.get_times(predict)[0]
             calls_train = self.double_Q.get_times(train)[0]
             time_pred = self.double_Q.get_times(predict)[1]
@@ -352,6 +369,7 @@ class DQAgent(ReinforcementAgent):
             print(f"Total time for {predict}: {time_pred:.2f} seconds")
             print(f"Total number of trainings: {calls_train}")
             print(f"Total time for {train}: {time_train:.2f} seconds")
+
             print(f"Current epsilon = {self.getCurrentEpsilon():.3f}")
             print("")
             self.lastWindowAccumRewards = 0.0
