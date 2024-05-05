@@ -331,7 +331,7 @@ class DQAgent(ReinforcementAgent):
         state_tensor = self.stateToTensor(state)
         action_tensor = torch.tensor([self.direction_to_index_map[action]], dtype=torch.long)
         nextState_tensor = self.stateToTensor(nextState)
-        reward_tensor = torch.tensor([reward], dtype=torch.float32)
+        reward_tensor = torch.tensor(reward, dtype=torch.float32)
         done_tensor = torch.tensor(done, dtype=torch.bool)
 
         # Experience to replay buffer

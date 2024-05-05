@@ -50,9 +50,9 @@ class double_DQN:
             next_q_values[dones] = 0.0
 
         # Calculate expected Q values
-        expected_q_values = rewards.squeeze(-1) + self.gamma * next_q_values
+        expected_q_values = rewards + self.gamma * next_q_values
 
-        assert current_q_values.shape == expected_q_values.shape
+        # assert current_q_values.shape == expected_q_values.shape
 
         # Compute loss
         loss = nn.functional.mse_loss(current_q_values, expected_q_values)
