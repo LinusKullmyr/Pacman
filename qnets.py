@@ -47,9 +47,7 @@ class double_DQN:
         # Predict next state Q-values from target network
         with torch.no_grad():
             next_q_values = self.target_network(next_states).max(1)[0].detach()
-
-        # mask out done states
-        next_q_values[dones.squeeze(-1)] = 0.0
+            next_q_values[dones] = 0.0
 
         # Calculate expected Q values
         expected_q_values = rewards.squeeze(-1) + self.gamma * next_q_values

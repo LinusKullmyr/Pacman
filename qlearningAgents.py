@@ -106,8 +106,6 @@ class DQAgent(ReinforcementAgent):
         # Best model
         self.best_reward = float("-inf")
         self.best_model = None
-        
-
 
     def syncNetworks(self):
         self.double_Q.update_target_network()
@@ -334,7 +332,7 @@ class DQAgent(ReinforcementAgent):
         action_tensor = torch.tensor([self.direction_to_index_map[action]], dtype=torch.long)
         nextState_tensor = self.stateToTensor(nextState)
         reward_tensor = torch.tensor([reward], dtype=torch.float32)
-        done_tensor = torch.tensor([done], dtype=torch.bool)
+        done_tensor = torch.tensor(done, dtype=torch.bool)
 
         # Experience to replay buffer
         experience = (state_tensor, action_tensor, nextState_tensor, reward_tensor, done_tensor)
@@ -357,8 +355,6 @@ class DQAgent(ReinforcementAgent):
         if state.getScore() > self.best_reward:
             self.best_reward = state.getScore()
             self.best_model = self.double_Q.policy_network.state_dict()
-
-
 
         # Make sure we have this var
         if not "episodeStartTime" in self.__dict__:
@@ -404,14 +400,14 @@ class DQAgent(ReinforcementAgent):
             self.episodeStartTime = time.time()
 
         LOGGING = 1
-        if(LOGGING):
+        if (LOGGING) and self.isInTraining:
             # add to the Logger, each episode
             self.Reward_Tracker.append(state.getScore())
             self.GameLength_Tracker.append(self.GameLength)
 
             if self.episodesSoFar == self.numTraining:
-                self.Reward_Tracker = np.array(self.Reward_Tracker)
-                self.GameLength_Tracker = np.array(self.GameLength_Tracker)
+                # self.Reward_Tracker = np.array(self.Reward_Tracker)
+                # self.GameLength_Tracker = np.array(self.GameLength_Tracker)
                 folderPath = "logs/"
                 suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
                 # create a folder with the current time stamp
@@ -419,12 +415,11 @@ class DQAgent(ReinforcementAgent):
                 os.makedirs(folderPath)
 
                 # save the numpy arrays
-                np.save(folderPath + "/reward_tracker" , self.Reward_Tracker)
-                np.save(folderPath + "/game_length_tracker", self.GameLength_Tracker)
+                np.save(folderPath + "/reward_tracker", np.array(self.Reward_Tracker))
+                np.save(folderPath + "/game_length_tracker", np.array(self.GameLength_Tracker))
 
                 # save the best pytorch model
                 torch.save(self.best_model, folderPath + "/best_model.pt")
-
 
         if self.episodesSoFar == self.numTraining:
             msg = "Training Done (turning off epsilon and alpha)"
