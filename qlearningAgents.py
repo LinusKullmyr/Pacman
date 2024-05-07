@@ -107,10 +107,17 @@ class DQAgent(ReinforcementAgent):
         self.best_reward = float("-inf")
         self.best_model = None
 
+    # Added method to load network
+    def loadNetwork(self, nets):
+        self.double_Q.policy_network = nets["policy_network"]
+        self.double_Q.target_network = nets["target_network"]
+        self.numTraining = 0
+
     def syncNetworks(self):
         self.double_Q.update_target_network()
 
-    def registerInitialState(self, state):
+    # Added recorded to function
+    def registerInitialState(self, state, recorded):
         # This will be called at the beginning of each episode
         self.startEpisode()
         if self.episodesSoFar == 0:
@@ -128,6 +135,9 @@ class DQAgent(ReinforcementAgent):
                 output_size = 4
 
             self.double_Q = qnets.double_DQN(input_channels, output_size, self.learning_rate, self.gamma)
+            # Added to load recorded if it exists
+            if recorded:
+                self.loadNetwork(recorded)
 
     def stateToTensor(self, state):
         """

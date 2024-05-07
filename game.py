@@ -72,10 +72,12 @@ class Configuration:
     The convention for positions, like a graph, is that (0,0) is the lower left corner, x increases
     horizontally and y increases vertically.  Therefore, north is the direction of increasing y, or (0,1).
     """
-
-    def __init__(self, pos, direction):
+    # Added Dimensions in Configuration class
+    def __init__(self, pos, direction, dimensions):
         self.pos = pos
         self.direction = direction
+        self.width = dimensions[0]
+        self.height = dimensions[1]
 
     def getPosition(self):
         return self.pos
@@ -110,10 +112,15 @@ class Configuration:
         """
         x, y = self.pos
         dx, dy = vector
+
+        # Added Periodic Boundary
+        new_x = (x + dx) % self.width
+        new_y = (y + dy) % self.height
+
         direction = Actions.vectorToDirection(vector)
         if direction == Directions.STOP:
             direction = self.direction  # There is no stop direction
-        return Configuration((x + dx, y + dy), direction)
+        return Configuration((new_x, new_y), direction, (self.width, self.height))
 
 
 class AgentState:
@@ -357,8 +364,9 @@ class Actions:
 
         for dir, vec in Actions._directionsAsList:
             dx, dy = vec
-            next_y = y_int + dy
-            next_x = x_int + dx
+            # Added periodic Boundary
+            next_y = (y_int + dy) % walls.height
+            next_x = (x_int + dx) % walls.width
             if not walls[next_x][next_y]:
                 possible.append(dir)
 
@@ -366,6 +374,7 @@ class Actions:
 
     getPossibleActions = staticmethod(getPossibleActions)
 
+    # Maybe Periodic boundary should be in the two methods below aswell?
     def getLegalNeighbors(position, walls):
         x, y = position
         x_int, y_int = int(x + 0.5), int(y + 0.5)
@@ -537,7 +546,8 @@ class GameStateData:
                     continue  # Max ghosts reached already
                 else:
                     numGhosts += 1
-            self.agentStates.append(AgentState(Configuration(pos, Directions.STOP), isPacman))
+            self.agentStates.append(AgentState(Configuration(pos, Directions.STOP,
+                                                             (self.layout.width, self.layout.height)), isPacman))
         self._eaten = [False for a in self.agentStates]
 
 
@@ -606,7 +616,8 @@ class Game:
         sys.stdout = OLD_STDOUT
         sys.stderr = OLD_STDERR
 
-    def run(self):
+    # Added recorded to function
+    def run(self, recorded):
         """
         Main control loop for game play.
         """
@@ -646,7 +657,8 @@ class Game:
                         self.unmute()
                         return
                 else:
-                    agent.registerInitialState(self.state.deepCopy())
+                    # Added recorded to initialstate
+                    agent.registerInitialState(self.state.deepCopy(), recorded)
                 # TODO: could this exceed the total time
                 self.unmute()
 

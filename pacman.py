@@ -53,6 +53,7 @@ import time
 import random
 import os
 import pickle
+import torch
 
 import settings
 
@@ -689,18 +690,20 @@ def readCommand(argv):
     args["catchExceptions"] = options.catchExceptions
     args["timeout"] = options.timeout
 
-    # Special case: recorded games don't use the runGames method or args structure
+    # Changed to load a network instead of old game
     if options.gameToReplay != None:
         print("Replaying recorded game %s." % options.gameToReplay)
         import pickle
 
-        f = open(options.gameToReplay)
+        f = open(options.gameToReplay, 'rb')
         try:
-            recorded = pickle.load(f)
+            # Added torch load
+            #recorded = pickle.load(f)
+            recorded = torch.load(f)
         finally:
             f.close()
-        recorded["display"] = args["display"]
-        replayGame(**recorded)
+        #recorded["display"] = args["display"]
+        replayGame(args["layout"], args["display"], recorded)
         sys.exit(0)
 
     return args
@@ -730,29 +733,36 @@ def loadAgent(pacman, nographics):
                 return getattr(module, pacman)
     raise Exception("The agent " + pacman + " is not specified in any *Agents.py.")
 
+# Added recorded to function
 
-def replayGame(layout, actions, display):
+# Changed function to use previous model instead of previous game
+def replayGame(layout, display, recorded):
     import pacmanAgents
     import ghostAgents
+    import qlearningAgents
 
+    # Added load network and run it with the loaded
     rules = ClassicGameRules()
-    agents = [pacmanAgents.GreedyAgent()] + [ghostAgents.RandomGhost(i + 1) for i in range(layout.getNumGhosts())]
-    game = rules.newGame(layout, agents[0], agents[1:], display)
-    state = game.state
-    display.initialize(state.data)
+    agents = [qlearningAgents.DQAgent()] + [ghostAgents.RandomGhost(i + 1) for i in range(layout.getNumGhosts())]
+    #agents[0].loadNetwork(recorded)
+    runGames(layout, agents[0], agents[1:], display, 10, False, recorded)
 
-    for action in actions:
-        # Execute the action
-        state = state.generateSuccessor(*action)
-        # Change the display
-        display.update(state.data)
-        # Allow for game specific conditions (winning, losing, etc.)
-        rules.process(state, game)
+    # game = rules.newGame(layout, agents[0], agents[1:], display)
+    # state = game.state
+    # display.initialize(state.data)
 
-    display.finish()
+    # for action in actions:
+    #     # Execute the action
+    #     state = state.generateSuccessor(*action)
+    #     # Change the display
+    #     display.update(state.data)
+    #     # Allow for game specific conditions (winning, losing, etc.)
+    #     rules.process(state, game)
 
+    #display.finish()
 
-def runGames(layout, pacman, ghosts, display, numGames, record, numTraining=0, catchExceptions=False, timeout=30):
+# Added recorded to function
+def runGames(layout, pacman, ghosts, display, numGames, record, recorded=None, numTraining=0, catchExceptions=False, timeout=30):
     print("layout:\n", layout)
     print("numGames", numGames)
     print("numTraining", numTraining)
@@ -775,16 +785,21 @@ def runGames(layout, pacman, ghosts, display, numGames, record, numTraining=0, c
             gameDisplay = display
             rules.quiet = False
         game = rules.newGame(layout, pacman, ghosts, gameDisplay, beQuiet, catchExceptions)
-        game.run()
+        # Added recorded to function call
+        game.run(recorded)
         if not beQuiet:
             games.append(game)
 
-        if record:
-            fname = ("recorded-game-%d" % (i + 1)) + "-".join([str(t) for t in time.localtime()[1:6]])
+        # Added torch save every 1000 games
+        if record and (i % 1000 == 0):
+            fname = ("./savedModels/saved-model-%d" % (i + 1)) + "-".join([str(t) for t in time.localtime()[1:6]])
+            torch.save({"policy_network": pacman.double_Q.policy_network , 
+                        "target_network": pacman.double_Q.target_network},
+                        fname)
             # f = file(fname, 'w')
-            components = {"layout": layout, "actions": game.moveHistory}
-            with open(fname, "w") as f:
-                pickle.dump(components, f)
+            # components = {"layout": layout, "actions": game.moveHistory}
+            # with open(fname, "w") as f:
+            #     pickle.dump(components, f)
 
     if (numGames - numTraining) > 0:
         scores = [game.state.getScore() for game in games]
