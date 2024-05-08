@@ -64,6 +64,13 @@ class double_DQN:
 
         return loss.detach().cpu()
 
+    def load_state_dict(self, state_dict):
+        self.policy_network.load_state_dict(state_dict.to(self.device))
+        self.update_target_network()
+
+    def get_state_dict(self):
+        return self.policy_network.state_dict().to("cpu")
+
     def timing(self, func):
         """
         Decorator to measure the average execution time of methods.

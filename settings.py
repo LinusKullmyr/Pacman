@@ -22,8 +22,8 @@ class Settings:
 
         # Network architecture
         # Convolution layers. Each will be followed by: batchnorm, relu, maxpool(2)
-        self.conv_layers = [64, 64, 64, 64]
-        self.dense_layers = [512, 64]
+        self.conv_layers = [32, 64, 64, 32]
+        self.dense_layers = [256, 64]
         self.dense_dropout = 0.5
 
         # Game and reward settings
