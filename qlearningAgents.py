@@ -98,6 +98,9 @@ class DQAgent(ReinforcementAgent):
         # self.alpha = float(alpha)
         # self.discount = float(gamma)
 
+        self.movingAverageWindowSize = 100
+        self.Reward_Tracker_100 = []
+
         # Feature for the logger
         self.Reward_Tracker = []
         self.GameLength = 0
@@ -363,16 +366,25 @@ class DQAgent(ReinforcementAgent):
         self.observeTransition(self.lastState, self.lastAction, state, deltaReward)
         self.stopEpisode()
 
-        if state.getScore() > self.best_reward:
-            self.best_reward = state.getScore()
-            self.best_model = self.double_Q.policy_network.state_dict()
-
         # Make sure we have this var
         if not "episodeStartTime" in self.__dict__:
             self.episodeStartTime = time.time()
         if not "lastWindowAccumRewards" in self.__dict__:
             self.lastWindowAccumRewards = 0.0
         self.lastWindowAccumRewards += state.getScore()
+
+        if len(self.Reward_Tracker_100) > self.movingAverageWindowSize: 
+            self.Reward_Tracker_100.pop(0)
+        self.Reward_Tracker_100.append(state.getScore())
+
+        averageReward_100 = sum(self.Reward_Tracker_100) / len(self.Reward_Tracker_100)
+            # define the best model as the one with the highest average reward
+            # maybe we should kick it out of the if %100 statement as we would only take 
+            # models into consideration that are 100, 200, 300... but not inbetween
+        if averageReward_100 > self.best_reward:
+            self.best_reward = averageReward_100
+            self.best_model = self.double_Q.policy_network.state_dict()
+
 
         NUM_EPS_UPDATE = 100
         if self.episodesSoFar % NUM_EPS_UPDATE == 0:
@@ -382,6 +394,7 @@ class DQAgent(ReinforcementAgent):
 
             # print(f"Episode: {self.episodesSoFar}")
             windowAvg = self.lastWindowAccumRewards / float(NUM_EPS_UPDATE)
+
             if self.episodesSoFar <= self.numTraining:
                 trainAvg = self.accumTrainRewards / float(self.episodesSoFar)
                 print("Completed %d out of %d training episodes" % (self.episodesSoFar, self.numTraining))
