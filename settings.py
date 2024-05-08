@@ -34,5 +34,6 @@ class Settings:
         self.WIN_REWARD = 100  # default = 500
         self.EAT_GHOST_REWARD = 100  # default = 200
 
-        # If agent lose this many points (from highest score), it dies
-        self.DROP_FROM_HIGHWATER_DEATH = 50
+        # If agent lose many points (from highest score), it dies
+        self.DROP_FROM_HIGHWATER_DEATH = 50  # How big points drop to die
+        self.DROP_FROM_HIGHWATER_DEATH_PENALTY = 0  # Penalty for dying in this way

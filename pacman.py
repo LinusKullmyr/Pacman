@@ -263,11 +263,12 @@ class GameState:
 
         return str(self.data)
 
-    def initialize(self, layout, numGhostAgents=1000):
+    def initialize(self, layout, numGhostAgents=1000, layout_name="UKNOWN"):
         """
         Creates an initial game state from a layout array (see layout.py).
         """
-        self.data.initialize(layout, numGhostAgents)
+        # print("gamestate init", layout_name)
+        self.data.initialize(layout, numGhostAgents, layout_name)
 
 
 ############################################################################
@@ -294,10 +295,10 @@ class ClassicGameRules:
     def __init__(self, timeout=30):
         self.timeout = timeout
 
-    def newGame(self, layout, pacmanAgent, ghostAgents, display, quiet=False, catchExceptions=False):
+    def newGame(self, layout, pacmanAgent, ghostAgents, display, quiet=False, catchExceptions=False, layout_name="UKNOWN"):
         agents = [pacmanAgent] + ghostAgents[: layout.getNumGhosts()]
         initState = GameState()
-        initState.initialize(layout, len(ghostAgents))
+        initState.initialize(layout, len(ghostAgents), layout_name)
         game = Game(agents, display, self, catchExceptions=catchExceptions)
         game.state = initState
         self.initialState = initState.deepCopy()
@@ -468,7 +469,7 @@ class GhostRules:
 
             ## TODO add death if score too far below highwater
             if state.data.score < state.data.highwater_score - settings.DROP_FROM_HIGHWATER_DEATH:
-                state.data.scoreChange -= LOSE_PENALTY
+                state.data.scoreChange -= settings.DROP_FROM_HIGHWATER_DEATH_PENALTY
                 state.data._lose = True
         else:
             ghostState = state.data.agentStates[agentIndex]
@@ -648,6 +649,7 @@ def readCommand(argv):
 
     # Choose a layout
     args["layout"] = layout.getLayout(options.layout)
+    args["layout_name"] = options.layout
     if args["layout"] == None:
         raise Exception("The layout " + options.layout + " cannot be found")
 
@@ -695,15 +697,15 @@ def readCommand(argv):
         print("Replaying recorded game %s." % options.gameToReplay)
         import pickle
 
-        f = open(options.gameToReplay, 'rb')
+        f = open(options.gameToReplay, "rb")
         try:
             # Added torch load
-            #recorded = pickle.load(f)
+            # recorded = pickle.load(f)
 
             recorded = torch.load(f)
         finally:
             f.close()
-        #recorded["display"] = args["display"]
+        # recorded["display"] = args["display"]
         replayGame(args["layout"], args["display"], recorded)
         sys.exit(0)
 
@@ -734,7 +736,9 @@ def loadAgent(pacman, nographics):
                 return getattr(module, pacman)
     raise Exception("The agent " + pacman + " is not specified in any *Agents.py.")
 
+
 # Added recorded to function
+
 
 # Changed function to use previous model instead of previous game
 def replayGame(layout, display, recorded):
@@ -745,7 +749,7 @@ def replayGame(layout, display, recorded):
     # Added load network and run it with the loaded
     rules = ClassicGameRules()
     agents = [qlearningAgents.DQAgent()] + [ghostAgents.RandomGhost(i + 1) for i in range(layout.getNumGhosts())]
-    #agents[0].loadNetwork(recorded)
+    # agents[0].loadNetwork(recorded)
     runGames(layout, agents[0], agents[1:], display, 10, False, recorded)
 
     # game = rules.newGame(layout, agents[0], agents[1:], display)
@@ -760,10 +764,23 @@ def replayGame(layout, display, recorded):
     #     # Allow for game specific conditions (winning, losing, etc.)
     #     rules.process(state, game)
 
-    #display.finish()
+    # display.finish()
+
 
 # Added recorded to function
-def runGames(layout, pacman, ghosts, display, numGames, record, recorded=None, numTraining=0, catchExceptions=False, timeout=30):
+def runGames(
+    layout,
+    pacman,
+    ghosts,
+    display,
+    numGames,
+    record,
+    recorded=None,
+    numTraining=0,
+    catchExceptions=False,
+    timeout=30,
+    layout_name="",
+):
     print("layout:\n", layout)
     print("numGames", numGames)
     print("numTraining", numTraining)
@@ -785,7 +802,8 @@ def runGames(layout, pacman, ghosts, display, numGames, record, recorded=None, n
         else:
             gameDisplay = display
             rules.quiet = False
-        game = rules.newGame(layout, pacman, ghosts, gameDisplay, beQuiet, catchExceptions)
+        # print("rungames", layout_name)
+        game = rules.newGame(layout, pacman, ghosts, gameDisplay, beQuiet, catchExceptions, layout_name)
         # Added recorded to function call
         game.run(recorded)
         if not beQuiet:
@@ -794,8 +812,7 @@ def runGames(layout, pacman, ghosts, display, numGames, record, recorded=None, n
         # Added torch save every 1000 games
         if record and (i % 1000 == 0):
             fname = ("./savedModels/saved-model-%d" % (i + 1)) + "-".join([str(t) for t in time.localtime()[1:6]]) + ".pt"
-            torch.save(pacman.double_Q.policy_network.state_dict() ,
-                        fname)
+            torch.save(pacman.double_Q.policy_network.state_dict(), fname)
             # f = file(fname, 'w')
             # components = {"layout": layout, "actions": game.moveHistory}
             # with open(fname, "w") as f:
