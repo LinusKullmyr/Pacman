@@ -699,6 +699,7 @@ def readCommand(argv):
         try:
             # Added torch load
             #recorded = pickle.load(f)
+
             recorded = torch.load(f)
         finally:
             f.close()
@@ -792,9 +793,8 @@ def runGames(layout, pacman, ghosts, display, numGames, record, recorded=None, n
 
         # Added torch save every 1000 games
         if record and (i % 1000 == 0):
-            fname = ("./savedModels/saved-model-%d" % (i + 1)) + "-".join([str(t) for t in time.localtime()[1:6]])
-            torch.save({"policy_network": pacman.double_Q.policy_network , 
-                        "target_network": pacman.double_Q.target_network},
+            fname = ("./savedModels/saved-model-%d" % (i + 1)) + "-".join([str(t) for t in time.localtime()[1:6]]) + ".pt"
+            torch.save(pacman.double_Q.policy_network.state_dict() ,
                         fname)
             # f = file(fname, 'w')
             # components = {"layout": layout, "actions": game.moveHistory}
