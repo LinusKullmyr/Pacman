@@ -109,8 +109,9 @@ class DQAgent(ReinforcementAgent):
 
     # Added method to load network
     def loadNetwork(self, nets):
-        self.double_Q.policy_network = nets["policy_network"]
-        self.double_Q.target_network = nets["target_network"]
+        self.double_Q.policy_network.load_state_dict(nets)
+        # self.double_Q.policy_network = nets["policy_network"]
+        # self.double_Q.target_network = nets["target_network"]
         self.numTraining = 0
 
     def syncNetworks(self):
