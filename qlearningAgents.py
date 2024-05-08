@@ -205,7 +205,7 @@ class DQAgent(ReinforcementAgent):
             x, y = gpos
 
             if timer > 0:
-                v = -1
+                v = -timer
             else:
                 v = 1
 
