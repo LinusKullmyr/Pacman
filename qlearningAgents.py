@@ -234,7 +234,7 @@ class DQAgent(ReinforcementAgent):
 
     def getCurrentEpsilon(self):
         ## TODO - this could probably be made nicer
-        if self.epsilon == 0:  # Epsilon is set to 0 after numTraining epsiodes
+        if self.isInTesting():
             current_epsilon = 0
         elif self.numTraining > 0:  # If we are doing training
             current_epsilon = max(
