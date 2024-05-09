@@ -388,6 +388,10 @@ class DQAgent(ReinforcementAgent):
 
         NUM_EPS_UPDATE = 100
         if self.episodesSoFar % NUM_EPS_UPDATE == 0:
+            # Get layoyt name
+            layout_name = state.data.layout_name
+            print(f"Layout name: {layout_name}")
+
             # print(f"Episode: {self.episodesSoFar}")
             windowAvg = self.lastWindowAccumRewards / float(NUM_EPS_UPDATE)
 

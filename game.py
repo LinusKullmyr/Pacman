@@ -72,6 +72,7 @@ class Configuration:
     The convention for positions, like a graph, is that (0,0) is the lower left corner, x increases
     horizontally and y increases vertically.  Therefore, north is the direction of increasing y, or (0,1).
     """
+
     # Added Dimensions in Configuration class
     def __init__(self, pos, direction, dimensions):
         self.pos = pos
@@ -415,6 +416,7 @@ class GameStateData:
             self._eaten = prevState._eaten
             self.score = prevState.score
             self.highwater_score = max(self.score, prevState.highwater_score)
+            self.layout_name = prevState.layout_name
 
         self._foodEaten = None
         self._foodAdded = None
@@ -526,7 +528,7 @@ class GameStateData:
             return "3"
         return "E"
 
-    def initialize(self, layout, numGhostAgents):
+    def initialize(self, layout, numGhostAgents, layout_name="UKNOWN"):
         """
         Creates an initial game state from a layout array (see layout.py).
         """
@@ -537,6 +539,7 @@ class GameStateData:
         self.score = 0
         self.scoreChange = 0
         self.highwater_score = 0
+        self.layout_name = layout_name
 
         self.agentStates = []
         numGhosts = 0
@@ -546,8 +549,9 @@ class GameStateData:
                     continue  # Max ghosts reached already
                 else:
                     numGhosts += 1
-            self.agentStates.append(AgentState(Configuration(pos, Directions.STOP,
-                                                             (self.layout.width, self.layout.height)), isPacman))
+            self.agentStates.append(
+                AgentState(Configuration(pos, Directions.STOP, (self.layout.width, self.layout.height)), isPacman)
+            )
         self._eaten = [False for a in self.agentStates]
 
 
