@@ -51,6 +51,7 @@ class DQAgent(ReinforcementAgent):
         self.epsilon_max = settings.epsilon_max
         self.epsilon_min = settings.epsilon_min
         self.epsilon_min_episode = int(self.numTraining * settings.epsilon_min_episode_ratio)
+        self.current_epsilon_list = None
 
         # Switch to allow Pacman to take "stop" action or not
         self.allow_stopping = settings.allow_stopping
@@ -236,16 +237,20 @@ class DQAgent(ReinforcementAgent):
         return state_tensor.unsqueeze(0)  # Unsqeeze to get a batch of 1
 
     def getCurrentEpsilon(self):
-        ## TODO - this could probably be made nicer
+        if self.current_epsilon_list is None:
+            # Generate current epsilon per training epsiode
+            self.current_epsilon_list = []
+            for i in range(self.numTraining):
+                e = max(
+                    self.epsilon_min,
+                    self.epsilon_max - (self.epsilon_max - self.epsilon_min) / self.epsilon_min_episode * i,
+                )
+                self.current_epsilon_list.append(e)
+
         if self.isInTesting():
             current_epsilon = 0
-        elif self.numTraining > 0:  # If we are doing training
-            current_epsilon = max(
-                self.epsilon_min,
-                self.epsilon_max - (self.epsilon_max - self.epsilon_min) / self.epsilon_min_episode * self.episodesSoFar,
-            )
         else:
-            current_epsilon = 0
+            current_epsilon = self.current_epsilon_list[self.episodesSoFar]
 
         return current_epsilon
 
@@ -373,18 +378,17 @@ class DQAgent(ReinforcementAgent):
             self.lastWindowAccumRewards = 0.0
         self.lastWindowAccumRewards += state.getScore()
 
-        if len(self.Reward_Tracker_100) > self.movingAverageWindowSize: 
+        if len(self.Reward_Tracker_100) > self.movingAverageWindowSize:
             self.Reward_Tracker_100.pop(0)
         self.Reward_Tracker_100.append(state.getScore())
 
         averageReward_100 = sum(self.Reward_Tracker_100) / len(self.Reward_Tracker_100)
-            # define the best model as the one with the highest average reward
-            # maybe we should kick it out of the if %100 statement as we would only take 
-            # models into consideration that are 100, 200, 300... but not inbetween
+        # define the best model as the one with the highest average reward
+        # maybe we should kick it out of the if %100 statement as we would only take
+        # models into consideration that are 100, 200, 300... but not inbetween
         if averageReward_100 > self.best_reward:
             self.best_reward = averageReward_100
             self.best_model = self.double_Q.policy_network.state_dict()
-
 
         NUM_EPS_UPDATE = 100
         if self.episodesSoFar % NUM_EPS_UPDATE == 0:
@@ -405,13 +409,14 @@ class DQAgent(ReinforcementAgent):
                 print("Average Rewards over testing: %.2f" % testAvg)
             print("Average Rewards for last %d episodes: %.2f" % (NUM_EPS_UPDATE, windowAvg))
             print("Episodes took %.2f seconds" % (time.time() - self.episodeStartTime))
-            predict = "predict_eval"
-            train = "training_step"
+
             print("Action count [North, East, South, West, Stop]:")
             print(self.log_actions)
             # reset action log
             self.log_actions = [0] * 5
 
+            predict = "predict_eval"
+            train = "training_step"
             calls_pred = self.double_Q.get_times(predict)[0]
             calls_train = self.double_Q.get_times(train)[0]
             time_pred = self.double_Q.get_times(predict)[1]
