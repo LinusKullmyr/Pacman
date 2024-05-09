@@ -249,7 +249,7 @@ class ReinforcementAgent(ValueEstimationAgent):
                 print("\tCompleted %d test episodes" % (self.episodesSoFar - self.numTraining))
                 print("\tAverage Rewards over testing: %.2f" % testAvg)
             print("\tAverage Rewards for last %d episodes: %.2f" % (NUM_EPS_UPDATE, windowAvg))
-            print("\tEpisode took %.2f seconds" % (time.time() - self.episodeStartTime))
+            print("\tEpisodes took %.2f seconds" % (time.time() - self.episodeStartTime))
             self.lastWindowAccumRewards = 0.0
             self.episodeStartTime = time.time()
 
