@@ -20,7 +20,7 @@ class double_DQN:
         self.optimizer = torch.optim.Adam(self.policy_network.parameters(), lr=self.learning_rate)
 
         # Use wrapper to track time used
-        self.times = {}
+        self.reset_times()
         self.predict_eval = self.timing(self.predict_eval)
         self.training_step = self.timing(self.training_step)
 
@@ -83,8 +83,6 @@ class double_DQN:
             end_time = time.time()
 
             func_name = func.__name__
-            if func_name not in self.times:
-                self.times[func_name] = {"total_time": 0, "call_count": 0}
 
             elapsed_time = end_time - start_time
             self.times[func_name]["total_time"] += elapsed_time
@@ -96,15 +94,18 @@ class double_DQN:
 
     def get_times(self, func_name):
         """Returns the average execution time for the specified function."""
-        if self.times[func_name]["call_count"] == 0:
-            return 0
         calls = self.times[func_name]["call_count"]
         tot = self.times[func_name]["total_time"]
-        avg = self.times[func_name]["total_time"] / self.times[func_name]["call_count"]
+        if calls > 0:
+            avg = tot / calls
+        else:
+            avg = 0
         return calls, tot, avg
 
     def reset_times(self):
         self.times = {}
+        for func_name in ("predict_eval", "training_step"):
+            self.times[func_name] = {"total_time": 0, "call_count": 0}
 
     def _get_device(self):
         if torch.cuda.is_available():
