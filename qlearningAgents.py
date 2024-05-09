@@ -65,6 +65,8 @@ class DQAgent(ReinforcementAgent):
 
         # All maps are padded to this size
         self.state_target_dimensions = settings.state_target_dimensions
+        self.cached_wall_tensor = None
+        self.paddings = None
 
         # defer the creation of Q-nets until we have a state, in registerInitialState
         self.double_Q = None
@@ -123,6 +125,30 @@ class DQAgent(ReinforcementAgent):
 
     # Added recorded to function
     def registerInitialState(self, state, recorded):
+        """Runs at the start of each episode"""
+
+        def cache_walls(walls):
+            """Cache the static wall tensor to avoid recomputing."""
+            width, height = walls.width, walls.height
+            wall_tensor = torch.zeros((1, width, height), dtype=torch.float32)
+
+            for x in range(width):
+                for y in range(height):
+                    wall_tensor[0, x, y] = walls[x][y]
+
+            return wall_tensor
+
+        def calc_paddings(h, w, ht, wt):
+            pad_height = max(ht - h, 0)
+            pad_width = max(wt - w, 0)
+
+            # Calculate padding for each side to maintain symmetry
+            pad_top = pad_height // 2
+            pad_bottom = pad_height - pad_top
+            pad_left = pad_width // 2
+            pad_right = pad_width - pad_left
+            return (pad_left, pad_right, pad_top, pad_bottom)
+
         # This will be called at the beginning of each episode
         self.startEpisode()
         if self.episodesSoFar == 0:
@@ -133,6 +159,7 @@ class DQAgent(ReinforcementAgent):
             print("Creating Q-nets")
             num_ghosts = len(state.getGhostStates())
             input_channels = 4 + num_ghosts * 5
+            self.num_channels = input_channels
 
             if self.allow_stopping:
                 output_size = 5
@@ -143,6 +170,13 @@ class DQAgent(ReinforcementAgent):
             # Added to load recorded if it exists
             if recorded:
                 self.loadNetwork(recorded)
+
+        # Prepare and cache stuff for stateToTensor
+        if self.cached_wall_tensor is None:
+            self.cached_wall_tensor = cache_walls(state.getWalls())
+            _, h, w = self.cached_wall_tensor.size()
+            ht, wt = self.state_target_dimensions
+            self.paddings = calc_paddings(h, w, ht, wt)
 
     def stateToTensor(self, state):
         """
@@ -157,45 +191,36 @@ class DQAgent(ReinforcementAgent):
         state_tensor : torch tensor of dim [4 + num_ghosts * 5, W, H]
 
         """
-        # Extracting the basic game state components
-        walls = state.getWalls()  # class Grid, can be indexed [x][y]
-        food = state.getFood()  # Same type as walls
 
-        # Pac-Man state
-        pacman_state = state.getPacmanState()
-        ppos, _ = pacman_state.getPosition(), pacman_state.getDirection()
-
-        # Ghost states
-        ghosts = []
-        for gs in state.getGhostStates():
-            gpos = gs.getPosition()
-            gdir = gs.getDirection()
-            scared_timer = gs.scaredTimer
-            ghosts.append((gpos, gdir, scared_timer))
-        num_ghosts = len(ghosts)
-
-        # Capsules
-        capsules = state.getCapsules()  # List of (x, y) tuples
+        # Food
+        food = state.getFood()
 
         # Environment dimensions
-        width, height = walls.width, walls.height
+        width, height = food.width, food.height
 
-        # Initialize tensors for each channel
-        num_channels = 4 + num_ghosts * 5  # walls, food, capsules, Pac-Man, 5 per ghost
-        state_tensor = torch.zeros((num_channels, width, height), dtype=torch.float32)
+        # Pac-Man position
+        ppos = state.getPacmanState().getPosition()
+
+        # Ghost states
+        ghosts = [(gs.getPosition(), gs.getDirection(), gs.scaredTimer) for gs in state.getGhostStates()]
+
+        # Initialize tensors for all channels
+        state_tensor = torch.zeros((self.num_channels, width, height), dtype=torch.float32)
 
         # Map for direction to tensor indices
         direction_map = self.direction_to_index_map
 
-        # Fill the tensor
-        for x in range(width):
-            for y in range(height):
-                state_tensor[0, x, y] = walls[x][y]  # Wall channel
-                state_tensor[1, x, y] = food[x][y]  # Food channel
+        # Insert cached wall tensor into state_tensor
+        state_tensor[0] = self.cached_wall_tensor[0]
 
-        # Capsule channel (as sparse locations)
-        for x, y in capsules:
-            state_tensor[2, x, y] = 1
+        # Insert food tensor into state_tensor
+        state_tensor[1] = torch.tensor(food.data, dtype=torch.float32)
+
+        # Capsules
+        capsules = state.getCapsules()  # List of (x, y) tuples
+        if capsules:  # Check if the list is not empty
+            capsule_coords = torch.tensor(capsules, dtype=torch.long)
+            state_tensor[2, capsule_coords[:, 0], capsule_coords[:, 1]] = 1
 
         # Pac-Man channel
         x, y = ppos
@@ -210,33 +235,22 @@ class DQAgent(ReinforcementAgent):
             x, y = gpos
 
             if timer > 0:
-                v = -timer
+                value = -timer
             else:
-                v = 1
+                value = 1
 
-            state_tensor[ghost_channel, int(x), int(y)] = v
-
-        # Calculate padding
-        # print(state_tensor.size())
-        _, h, w = state_tensor.size()
-
-        # Calculate padding to achieve target dimensions
-        # Ensure the total padding size is evenly divisible by 2
-        pad_height = max(32 - h, 0)
-        pad_width = max(32 - w, 0)
-
-        # Calculate padding for each side to maintain symmetry
-        pad_top = pad_height // 2
-        pad_bottom = pad_height - pad_top
-        pad_left = pad_width // 2
-        pad_right = pad_width - pad_left
+            state_tensor[ghost_channel, int(x), int(y)] = value
 
         # Apply symmetric padding
+        (pad_left, pad_right, pad_top, pad_bottom) = self.paddings
         state_tensor = torch.nn.functional.pad(state_tensor, (pad_left, pad_right, pad_top, pad_bottom), mode="constant", value=0)
 
         return state_tensor.unsqueeze(0)  # Unsqeeze to get a batch of 1
 
     def getCurrentEpsilon(self):
+        if self.epsilon_min_episode == 0:
+            self.epsilon_min_episode = 1
+
         if self.current_epsilon_list is None:
             # Generate current epsilon per training epsiode
             self.current_epsilon_list = []

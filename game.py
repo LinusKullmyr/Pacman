@@ -25,6 +25,11 @@ import time
 import os
 import traceback
 import sys
+import functools
+
+# import numba
+# import copy
+import numpy as np
 
 #######################
 # Parts worth reading #
@@ -169,6 +174,23 @@ class AgentState:
         return self.configuration.getDirection()
 
 
+@functools.cache
+def hashgrid(data):
+    base = 1
+    h = 0
+    for l in data:
+        for i in l:
+            if i:
+                h += base
+            base *= 2
+    return hash(h)
+
+
+# @numba.njit
+# def init_data(width, height, initialValue):
+#     return [[initialValue for y in range(height)] for x in range(width)]
+
+
 class Grid:
     """
     A 2-dimensional array of objects backed by a list of lists.  Data is accessed
@@ -185,7 +207,14 @@ class Grid:
 
         self.width = width
         self.height = height
-        self.data = [[initialValue for y in range(height)] for x in range(width)]
+        # print("DATA")
+        self.data = np.full((width, height), initialValue, dtype=bool).tolist()
+        # print(self.data)
+        # self.data = [[initialValue for y in range(height)] for x in range(width)]
+        # print(self.data)
+        # print()
+        # raise ValueError
+
         if bitRepresentation:
             self._unpackBits(bitRepresentation)
 
@@ -206,15 +235,8 @@ class Grid:
         return self.data == other.data
 
     def __hash__(self):
-        # return hash(str(self))
-        base = 1
-        h = 0
-        for l in self.data:
-            for i in l:
-                if i:
-                    h += base
-                base *= 2
-        return hash(h)
+        tuples = tuple([tuple(l) for l in self.data])
+        return hashgrid(tuples)
 
     def copy(self):
         g = Grid(self.width, self.height)
