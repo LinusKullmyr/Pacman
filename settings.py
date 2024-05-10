@@ -34,7 +34,7 @@ class Settings:
         self.TIME_PENALTY = 1  # Number of points lost each round, default = 1
         self.FOOD_REWARD = 10  # Default = 10
         self.LOSE_PENALTY = 100  # default = 500
-        self.WIN_REWARD = 500  # default = 500
+        self.WIN_REWARD = 100  # default = 500
         self.EAT_GHOST_REWARD = 100  # default = 200
 
         # If agent lose many points (from highest score), it dies
