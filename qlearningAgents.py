@@ -53,6 +53,10 @@ class DQAgent(ReinforcementAgent):
         self.epsilon_min_episode = int(self.numTraining * settings.epsilon_min_episode_ratio)
         self.current_epsilon_list = None
 
+        # Random start positions
+        self.random_start_position = settings.random_start_position
+        self.valid_start_positions = None  # populated in registerInitialState
+
         # Switch to allow Pacman to take "stop" action or not
         self.allow_stopping = settings.allow_stopping
         # Log which actions were taken
@@ -149,6 +153,25 @@ class DQAgent(ReinforcementAgent):
             pad_right = pad_width - pad_left
             return (pad_left, pad_right, pad_top, pad_bottom)
 
+        def get_valid_start_positions(state):
+            food = state.getFood()  # grid
+            walls = state.getWalls()  # grid
+            capsules = state.getCapsules()  # List of (x, y) tuples
+            ghosts_pos = [gs.getPosition() for gs in state.getGhostStates()]
+
+            width, height = walls.width, walls.height
+            capsules = set(capsules)
+            ghosts_pos = set(ghosts_pos)
+
+            positions = []
+            for x in range(width):
+                for y in range(height):
+                    t = (x, y)
+                    if not any((food[x][y], walls[x][y], t in capsules, t in ghosts_pos)):
+                        positions.append(t)
+            print(f"Valid starting positions: {positions}")
+            return positions
+
         # This will be called at the beginning of each episode
         self.startEpisode()
         if self.episodesSoFar == 0:
@@ -177,6 +200,14 @@ class DQAgent(ReinforcementAgent):
             _, h, w = self.cached_wall_tensor.size()
             ht, wt = self.state_target_dimensions
             self.paddings = calc_paddings(h, w, ht, wt)
+
+        # Random starting position of PAC-MAN
+        if self.random_start_position and self.isInTraining:
+            if self.valid_start_positions is None:
+                self.valid_start_positions = get_valid_start_positions(state)
+            startpos = random.choice(self.valid_start_positions)
+            # print(startpos)
+            state.data.agentStates[0].configuration.pos = startpos
 
     def stateToTensor(self, state):
         """

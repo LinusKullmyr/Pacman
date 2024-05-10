@@ -12,6 +12,9 @@ class Settings:
         # Switch to allow Pacman to take "stop" action or not
         self.allow_stopping = False
 
+        # Random start position
+        self.random_start_position = True
+
         # All maps are padded to this size
         self.state_target_dimensions = (32, 32)
 
@@ -22,8 +25,8 @@ class Settings:
 
         # Network architecture
         # Convolution layers. Each will be followed by: batchnorm, relu, maxpool(2)
-        self.conv_layers = [32, 64, 64, 32]
-        self.dense_layers = [256, 64]
+        self.conv_layers = [64, 64, 64, 64]
+        self.dense_layers = [512, 64]
         self.dense_dropout = 0.5
 
         # Game and reward settings
@@ -31,9 +34,9 @@ class Settings:
         self.TIME_PENALTY = 1  # Number of points lost each round, default = 1
         self.FOOD_REWARD = 10  # Default = 10
         self.LOSE_PENALTY = 100  # default = 500
-        self.WIN_REWARD = 100  # default = 500
+        self.WIN_REWARD = 500  # default = 500
         self.EAT_GHOST_REWARD = 100  # default = 200
 
         # If agent lose many points (from highest score), it dies
-        self.DROP_FROM_HIGHWATER_DEATH = 50  # How big points drop to die
-        self.DROP_FROM_HIGHWATER_DEATH_PENALTY = 0  # Penalty for dying in this way
+        self.DROP_FROM_HIGHWATER_DEATH = 30  # How big points drop to die
+        self.DROP_FROM_HIGHWATER_DEATH_PENALTY = 100  # Penalty for dying in this way
