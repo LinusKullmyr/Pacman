@@ -5,18 +5,34 @@ from functools import wraps
 
 
 class double_DQN:
-    def __init__(self, input_channels, output_size, learning_rate, gamma):
+    def __init__(self, input_channels, output_size, dims, learning_rate, gamma):
         self.device = self._get_device()
         print("Using device: ", self.device)
 
         self.learning_rate = learning_rate
         self.gamma = gamma
 
+        # Create network
         self.policy_network = CNN(input_channels, output_size).to(self.device)
         self.target_network = CNN(input_channels, output_size).to(self.device)
+
+        # Dry run of networks
+        w, h = dims
+        example_input = torch.randn(32, input_channels, w, h).to(self.device)
+        self.policy_network(example_input)
+        self.target_network(example_input)
+
+        # Print network info
+        total_params = sum(p.numel() for p in self.policy_network.parameters() if p.requires_grad)
+        print("Network architecture:")
+        print(self.policy_network)
+        print(f"Number of network parameters: {total_params}")
+
+        # Sync and prepare networks
         self.target_network.eval()  # Only evals from target network
         self.update_target_network()  # Do an inital sync
 
+        # Define optimizer
         self.optimizer = torch.optim.Adam(self.policy_network.parameters(), lr=self.learning_rate)
 
         # Use wrapper to track time used
@@ -36,7 +52,7 @@ class double_DQN:
         return action
 
     def training_step(self, batch):
-        states, actions, next_states, rewards, dones = (t.to(self.device) for t in batch)
+        states, actions, next_states, rewards, dones = [t.to(self.device) for t in batch]
 
         # Put policy network in training mode
         self.policy_network.train()
@@ -62,14 +78,12 @@ class double_DQN:
         loss.backward()
         self.optimizer.step()
 
-        return loss.detach().cpu()
-
     def load_state_dict(self, state_dict):
-        self.policy_network.load_state_dict(state_dict.to(self.device))
+        self.policy_network.load_state_dict(state_dict)
         self.update_target_network()
 
     def get_state_dict(self):
-        return self.policy_network.state_dict().to("cpu")
+        return self.policy_network.state_dict()
 
     def timing(self, func):
         """
@@ -80,14 +94,10 @@ class double_DQN:
         def wrapper(*args, **kwargs):
             start_time = time.time()
             result = func(*args, **kwargs)
-            end_time = time.time()
+            elapsed_time = time.time() - start_time
 
-            func_name = func.__name__
-
-            elapsed_time = end_time - start_time
-            self.times[func_name]["total_time"] += elapsed_time
-            self.times[func_name]["call_count"] += 1
-
+            self.times[func.__name__]["total_time"] += elapsed_time
+            self.times[func.__name__]["call_count"] += 1
             return result
 
         return wrapper

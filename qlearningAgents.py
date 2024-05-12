@@ -119,7 +119,8 @@ class DQAgent(ReinforcementAgent):
 
     # Added method to load network
     def loadNetwork(self, nets):
-        self.double_Q.policy_network.load_state_dict(nets)
+        self.double_Q.load_state_dict(nets)
+        # self.double_Q.policy_network.load_state_dict(nets)
         # self.double_Q.policy_network = nets["policy_network"]
         # self.double_Q.target_network = nets["target_network"]
         self.numTraining = 0
@@ -189,7 +190,9 @@ class DQAgent(ReinforcementAgent):
             else:
                 output_size = 4
 
-            self.double_Q = qnets.double_DQN(input_channels, output_size, self.learning_rate, self.gamma)
+            self.double_Q = qnets.double_DQN(
+                input_channels, output_size, self.state_target_dimensions, self.learning_rate, self.gamma
+            )
             # Added to load recorded if it exists
             if recorded:
                 self.loadNetwork(recorded)
@@ -279,22 +282,20 @@ class DQAgent(ReinforcementAgent):
         return state_tensor.unsqueeze(0)  # Unsqeeze to get a batch of 1
 
     def getCurrentEpsilon(self):
-        if self.epsilon_min_episode == 0:
-            self.epsilon_min_episode = 1
-
-        if self.current_epsilon_list is None:
-            # Generate current epsilon per training epsiode
-            self.current_epsilon_list = []
-            for i in range(self.numTraining):
-                e = max(
-                    self.epsilon_min,
-                    self.epsilon_max - (self.epsilon_max - self.epsilon_min) / self.epsilon_min_episode * i,
-                )
-                self.current_epsilon_list.append(e)
-
         if self.isInTesting():
             current_epsilon = 0
         else:
+            if self.current_epsilon_list is None:
+                if self.epsilon_min_episode == 0:
+                    self.epsilon_min_episode = 1
+                # Generate current epsilon per training epsiode
+                self.current_epsilon_list = []
+                for i in range(self.numTraining):
+                    e = max(
+                        self.epsilon_min,
+                        self.epsilon_max - (self.epsilon_max - self.epsilon_min) / self.epsilon_min_episode * i,
+                    )
+                    self.current_epsilon_list.append(e)
             current_epsilon = self.current_epsilon_list[self.episodesSoFar]
 
         return current_epsilon
@@ -433,7 +434,7 @@ class DQAgent(ReinforcementAgent):
         # models into consideration that are 100, 200, 300... but not inbetween
         if averageReward_100 > self.best_reward:
             self.best_reward = averageReward_100
-            self.best_model = self.double_Q.policy_network.state_dict()
+            self.best_model = self.double_Q.get_state_dict()
 
         NUM_EPS_UPDATE = 100
         if self.episodesSoFar % NUM_EPS_UPDATE == 0:
