@@ -12,6 +12,8 @@ To run:
 -r to save models
 --replay to use a saved model
 
+-q for no graphics
+
 Example:
 python3 pacman.py -l smallGrid2.lay -p DQAgent -x 2500 -n 2510
 
