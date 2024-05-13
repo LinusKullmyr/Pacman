@@ -76,6 +76,10 @@ class DQAgent(ReinforcementAgent):
         self.double_Q = None
         self.replay_buffer = collections.deque(maxlen=self.replay_buffer_size)
 
+        # Store ghost scared timer for state tensor creation
+        self.scared_timer = settings.SCARED_TIME
+
+        # Direction mappings
         self.action_tuples = (
             game.Directions.NORTH,
             game.Directions.EAST,
@@ -182,7 +186,7 @@ class DQAgent(ReinforcementAgent):
         if self.double_Q is None:
             print("Creating Q-nets")
             num_ghosts = len(state.getGhostStates())
-            input_channels = 4 + num_ghosts * 5
+            input_channels = 4 + num_ghosts * 6
             self.num_channels = input_channels
 
             if self.allow_stopping:
@@ -205,7 +209,7 @@ class DQAgent(ReinforcementAgent):
             self.paddings = calc_paddings(h, w, ht, wt)
 
         # Random starting position of PAC-MAN
-        if self.random_start_position and self.isInTraining:
+        if self.random_start_position and self.isInTraining():
             if self.valid_start_positions is None:
                 self.valid_start_positions = get_valid_start_positions(state)
             startpos = random.choice(self.valid_start_positions)
@@ -261,19 +265,23 @@ class DQAgent(ReinforcementAgent):
         state_tensor[3, x, y] = 1
 
         # Ghost channels
+        # 6 channels per ghost (N, E, S , W, Stop, Scared)
+
         for i, (gpos, gdir, timer) in enumerate(ghosts):
             # Offset by 4 to account for walls, food, capsules, Pac-Man channels
-            ghost_channel = 4 + i * 4 + direction_map[gdir]
+            ghost_channel_posdir = 4 + i * 6 + direction_map[gdir]
+            ghost_channel_scared = 4 + i * 6 + 5
 
-            # print("ghosts", i, ghost_channel, int(gpos[1]), int(gpos[0]))
             x, y = gpos
+            x, y = int(x), int(y)
 
             if timer > 0:
-                value = -timer
+                tval = timer / self.scared_timer
             else:
-                value = 1
+                tval = -1
 
-            state_tensor[ghost_channel, int(x), int(y)] = value
+            state_tensor[ghost_channel_posdir, x, y] = 1.0
+            state_tensor[ghost_channel_scared, x, y] = tval
 
         # Apply symmetric padding
         (pad_left, pad_right, pad_top, pad_bottom) = self.paddings

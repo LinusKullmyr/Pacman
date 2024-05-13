@@ -6,7 +6,7 @@ class Settings:
 
         # Epsilon
         self.epsilon_max = 1.0  # maximum random rate (initial)
-        self.epsilon_min = 0.1  # minimum random rate
+        self.epsilon_min = 0.01  # minimum random rate
         self.epsilon_min_episode_ratio = 0.75  # When epsilon should reach epsilon_min, ratio of trainings
 
         # Switch to allow Pacman to take "stop" action or not
@@ -19,7 +19,7 @@ class Settings:
         self.state_target_dimensions = (32, 32)
 
         # Buffer, sync and batch
-        self.replay_buffer_size = 1000
+        self.replay_buffer_size = 5000
         self.sync_target_episode_count = 100
         self.batch_size = 32
 
