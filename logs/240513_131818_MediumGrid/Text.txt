@@ -1,0 +1,71 @@
+Layout name: mediumGrid
+Completed 5000 out of 5000 training episodes
+Average Rewards over all training: -0.76
+Average Rewards for last 100 episodes: 113.43
+Episodes took 23.11 seconds
+Action count [North, East, South, West, Stop]:
+[399, 304, 401, 243, 0]
+Total number of predictions: 1335
+Total time for predict_eval: 4.59 seconds
+Total number of trainings: 1347
+Total time for training_step: 17.60 seconds
+Current epsilon = 0.000
+
+Training Done (turning off epsilon and alpha)
+---------------------------------------------
+Episode 5000: Synchronizing policy and target networks
+
+Pacman emerges victorious! Score: 125
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 125
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 125
+Pacman emerges victorious! Score: 123
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 123
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 125
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 123
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 127
+Pacman emerges victorious! Score: 123
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 129
+Pacman emerges victorious! Score: 125
+Pacman emerges victorious! Score: 123
+Pacman emerges victorious! Score: 117
+Average Score: 127.2
+Scores:        125.0, 129.0, 129.0, 127.0, 129.0, 125.0, 127.0, 129.0, 125.0, 123.0, 129.0, 127.0, 127.0, 127.0, 129.0, 129.0, 129.0, 129.0, 127.0, 129.0, 127.0, 123.0, 127.0, 129.0, 129.0, 129.0, 127.0, 125.0, 129.0, 127.0, 127.0, 127.0, 129.0, 129.0, 129.0, 129.0, 123.0, 129.0, 127.0, 129.0, 129.0, 129.0, 129.0, 127.0, 123.0, 129.0, 129.0, 125.0, 123.0, 117.0
+Win Rate:      50/50 (1.00)
+Record:        Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win
