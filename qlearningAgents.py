@@ -55,6 +55,7 @@ class DQAgent(ReinforcementAgent):
 
         # Random start positions
         self.random_start_position = settings.random_start_position
+        self.random_start_has_food = settings.random_start_has_food
         self.valid_start_positions = None  # populated in registerInitialState
 
         # Switch to allow Pacman to take "stop" action or not
@@ -158,7 +159,7 @@ class DQAgent(ReinforcementAgent):
             pad_right = pad_width - pad_left
             return (pad_left, pad_right, pad_top, pad_bottom)
 
-        def get_valid_start_positions(state):
+        def get_valid_start_positions(state, random_start_has_food):
             food = state.getFood()  # grid
             walls = state.getWalls()  # grid
             capsules = state.getCapsules()  # List of (x, y) tuples
@@ -172,7 +173,7 @@ class DQAgent(ReinforcementAgent):
             for x in range(width):
                 for y in range(height):
                     t = (x, y)
-                    if not any((food[x][y], walls[x][y], t in capsules, t in ghosts_pos)):
+                    if not any((food[x][y] and not random_start_has_food, walls[x][y], t in capsules, t in ghosts_pos)):
                         positions.append(t)
             print(f"Valid starting positions: {positions}")
             return positions
@@ -210,11 +211,18 @@ class DQAgent(ReinforcementAgent):
 
         # Random starting position of PAC-MAN
         if self.random_start_position and self.isInTraining():
+            # if self.random_start_position:
             if self.valid_start_positions is None:
-                self.valid_start_positions = get_valid_start_positions(state)
-            startpos = random.choice(self.valid_start_positions)
-            # print(startpos)
-            state.data.agentStates[0].configuration.pos = startpos
+                self.valid_start_positions = get_valid_start_positions(state, self.random_start_has_food)
+            orig_startpos = state.data.agentStates[0].configuration.pos
+            new_startpos = random.choice(self.valid_start_positions)
+            state.data.agentStates[0].configuration.pos = new_startpos
+            if self.random_start_has_food:
+                # Remove food in new location, put it in old
+                x, y = new_startpos
+                state.data.food[x][y] = False
+                x, y = orig_startpos
+                state.data.food[x][y] = True
 
     def stateToTensor(self, state):
         """

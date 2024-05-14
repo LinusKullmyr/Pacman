@@ -14,12 +14,13 @@ class Settings:
 
         # Random start position
         self.random_start_position = True
+        self.random_start_has_food = True  # Allow starting also where there is food (food is removed)
 
         # All maps are padded to this size
         self.state_target_dimensions = (32, 32)
 
         # Buffer, sync and batch
-        self.replay_buffer_size = 5000
+        self.replay_buffer_size = 10000
         self.sync_target_episode_count = 100
         self.batch_size = 32
 
@@ -38,5 +39,5 @@ class Settings:
         self.EAT_GHOST_REWARD = 100  # default = 200
 
         # If agent lose many points (from highest score), it dies
-        self.DROP_FROM_HIGHWATER_DEATH = 30  # How big points drop to die
+        self.DROP_FROM_HIGHWATER_DEATH = 50  # How big points drop to die
         self.DROP_FROM_HIGHWATER_DEATH_PENALTY = 100  # Penalty for dying in this way
