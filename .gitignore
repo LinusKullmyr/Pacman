@@ -2,6 +2,5 @@
 .DS_Store
 /__pycache__
 /lightning_logs
-/logs
 profiler.txt
 /savedModels

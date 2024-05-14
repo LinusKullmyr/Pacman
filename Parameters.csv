@@ -1,0 +1,9 @@
+Parameters," Value"
+\epsilon_0,1
+\epsilon_{end},0.01
+numberOfEpisodes,5000
+"Ratio of episodes when \epsilon = \epsilopn_{end} ",75 %
+replay buffer size,5000
+sync frequency of networks (target / policy),100 epsiodes
+"batch size ",32
+,
