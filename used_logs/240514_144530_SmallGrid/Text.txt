@@ -1,0 +1,123 @@
+Training Done (turning off epsilon and alpha)
+---------------------------------------------
+Episode 5000: Synchronizing policy and target networks
+
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 95
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 107
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 97
+Pacman died! Score: -104
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 99
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 95
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 101
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 97
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 97
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 107
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 99
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 97
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 99
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 97
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 99
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 97
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 103
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 105
+Pacman emerges victorious! Score: 97
+Pacman emerges victorious! Score: 105
+Layout name: smallGrid
+Completed 100 test episodes
+Average Rewards over testing: 101.63
+Average Rewards for last 100 episodes: 101.63
+Episodes took 28.92 seconds
+Action count [North, East, South, West, Stop]:
+[132, 528, 436, 531, 0]
+Total number of predictions: 1627
+Total time for predict_eval: 5.88 seconds
+Total number of trainings: 1627
+Total time for training_step: 21.63 seconds
+Current epsilon = 0.000
+
+Episode 5100: Synchronizing policy and target networks
+
+Average Score: 101.63
+Scores:        103.0, 103.0, 105.0, 105.0, 103.0, 103.0, 95.0, 103.0, 107.0, 103.0, 97.0, -104.0, 103.0, 99.0, 103.0, 105.0, 95.0, 105.0, 105.0, 105.0, 101.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 103.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 97.0, 105.0, 105.0, 105.0, 97.0, 105.0, 107.0, 105.0, 99.0, 103.0, 105.0, 105.0, 105.0, 103.0, 103.0, 105.0, 105.0, 97.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 99.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 97.0, 105.0, 99.0, 103.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 105.0, 97.0, 105.0, 105.0, 105.0, 103.0, 105.0, 105.0, 97.0, 105.0
+Win Rate:      99/100 (0.99)
+Record:        Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Loss, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win, Win
