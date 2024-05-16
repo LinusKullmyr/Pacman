@@ -12,8 +12,12 @@ class Settings:
         # Switch to allow Pacman to take "stop" action or not
         self.allow_stopping = False
 
+        # Randomize food during training
+        self.food_random = 0.4  # Chance that a food remains
+        self.scale_food_reward = True  # Scale the food reward by 1/food_ranom
+
         # Random start position
-        self.random_start_position = True
+        self.random_start_position = False
         self.random_start_has_food = True  # Allow starting also where there is food (food is removed)
 
         # All maps are padded to this size
@@ -35,9 +39,13 @@ class Settings:
         self.TIME_PENALTY = 1  # Number of points lost each round, default = 1
         self.FOOD_REWARD = 10  # Default = 10
         self.LOSE_PENALTY = 100  # default = 500
-        self.WIN_REWARD = 100  # default = 500
+        self.WIN_REWARD = 500  # default = 500
         self.EAT_GHOST_REWARD = 100  # default = 200
 
         # If agent lose many points (from highest score), it dies
         self.DROP_FROM_HIGHWATER_DEATH = 50  # How big points drop to die
-        self.DROP_FROM_HIGHWATER_DEATH_PENALTY = 100  # Penalty for dying in this way
+        self.DROP_FROM_HIGHWATER_DEATH_PENALTY = 50  # Penalty for dying in this way
+
+        # If number of food is less, the rewards will look worse. This will mitigate that to get comparable numbers.
+        if self.scale_food_reward:
+            self.FOOD_REWARD = int(self.FOOD_REWARD / self.food_random)

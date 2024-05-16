@@ -53,6 +53,9 @@ class DQAgent(ReinforcementAgent):
         self.epsilon_min_episode = int(self.numTraining * settings.epsilon_min_episode_ratio)
         self.current_epsilon_list = None
 
+        # Random food
+        self.food_random = settings.food_random
+
         # Random start positions
         self.random_start_position = settings.random_start_position
         self.random_start_has_food = settings.random_start_has_food
@@ -209,8 +212,31 @@ class DQAgent(ReinforcementAgent):
             ht, wt = self.state_target_dimensions
             self.paddings = calc_paddings(h, w, ht, wt)
 
+        # Randomize food
+        ## TODO this is a bit inefficient with the nested loop
+        if self.isInTraining() and self.food_random < 1:
+            food_grid = state.getFood().data
+            # print("type food grid", type(food_grid))
+            food_array = np.array(food_grid, dtype=bool)
+            # print("shape", food_array.shape)
+            random_mask = np.random.rand(*food_array.shape)
+            retain_mask = random_mask < self.food_random
+            updated_food_array = np.where(food_array & retain_mask, True, False)
+            # Ensure at least one 'True' value remains by putting back one of the original 'True' values if necessary
+            if not updated_food_array.any():
+                true_indices = np.argwhere(food_array)
+                if true_indices.size > 0:
+                    random_index = true_indices[np.random.choice(true_indices.shape[0])]
+                    updated_food_array[random_index[0], random_index[1]] = True
+
+            for i in range(len(food_grid)):
+                for j in range(len(food_grid[i])):
+                    food_grid[i][j] = bool(updated_food_array[i, j])
+            # print(state.getFood())
+            # print()
+
         # Random starting position of PAC-MAN
-        if self.random_start_position and self.isInTraining():
+        if self.isInTraining() and self.random_start_position:
             # if self.random_start_position:
             if self.valid_start_positions is None:
                 self.valid_start_positions = get_valid_start_positions(state, self.random_start_has_food)
