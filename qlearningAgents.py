@@ -354,6 +354,9 @@ class DQAgent(ReinforcementAgent):
         must return an action from Directions.{North, South, East, West, Stop}
         """
 
+        # Track game length, 1 action per time step
+        self.GameLength += 1
+
         ## If no legal actions, return None
         legalActions = self.getLegalActions(state)
         if not legalActions:
@@ -416,7 +419,6 @@ class DQAgent(ReinforcementAgent):
         batch = (states, actions, next_states, rewards, dones)
 
         self.double_Q.training_step(batch)
-        self.GameLength += 1
 
     def update(self, state, action, nextState, reward):
         """
