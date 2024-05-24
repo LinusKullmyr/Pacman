@@ -750,7 +750,7 @@ def replayGame(layout, display, recorded):
     rules = ClassicGameRules()
     agents = [qlearningAgents.DQAgent()] + [ghostAgents.RandomGhost(i + 1) for i in range(layout.getNumGhosts())]
     # agents[0].loadNetwork(recorded)
-    runGames(layout, agents[0], agents[1:], display, 50, False, recorded)
+    runGames(layout, agents[0], agents[1:], display, 10, False, recorded)
 
     # game = rules.newGame(layout, agents[0], agents[1:], display)
     # state = game.state
